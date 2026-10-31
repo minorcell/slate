@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Slate 桌面</string>
+    <string name="eyebrow">SLATE 桌面</string>
+    <string name="settings">设置</string>
+    <string name="hidden_apps">已隐藏的应用</string>
+    <string name="move">移动</string>
+    <string name="hide">隐藏</string>
+    <string name="app_info">应用信息</string>
+    <string name="uninstall">卸载</string>
+    <string name="unhide">恢复显示</string>
+    <string name="no_hidden">没有隐藏的应用</string>
+    <string name="empty">没有找到可启动的应用</string>
+    <string name="cannot_open">无法打开应用</string>
+    <string name="move_hint">方向键移动 · OK 完成</string>
+</resources>

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:paddingStart="@dimen/edge"
+        android:paddingTop="43dp"
+        android:paddingEnd="@dimen/edge"
+        android:paddingBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.22"
+                android:text="@string/eyebrow"
+                android:textColor="@color/text_eyebrow"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-light"
+                android:maxLines="1"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/title_size" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/hidden"
+            android:layout_width="@dimen/tool_size"
+            android:layout_height="@dimen/tool_size"
+            android:background="@drawable/btn_bg"
+            android:contentDescription="@string/hidden_apps"
+            android:focusable="true"
+            android:src="@drawable/ic_hidden"
+            android:tint="@color/btn_tint" />
+
+        <ImageButton
+            android:id="@+id/settings"
+            android:layout_width="@dimen/tool_size"
+            android:layout_height="@dimen/tool_size"
+            android:layout_marginStart="9dp"
+            android:background="@drawable/btn_bg"
+            android:contentDescription="@string/settings"
+            android:focusable="true"
+            android:src="@drawable/ic_settings"
+            android:tint="@color/btn_tint" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="26dp"
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <TextClock
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-light"
+                android:format12Hour="h:mm"
+                android:format24Hour="HH:mm"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/clock_size" />
+
+            <TextClock
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:format12Hour="M月d日 EEE"
+                android:format24Hour="M月d日 EEE"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ScrollView
+            android:id="@+id/scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:paddingTop="8dp"
+            android:paddingBottom="32dp"
+            android:scrollbars="none">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipChildren="false"
+                android:gravity="center">
+
+                <GridLayout
+                    android:id="@+id/grid"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:clipChildren="false"
+                    android:columnCount="4" />
+            </FrameLayout>
+        </ScrollView>
+
+        <TextView
+            android:id="@+id/empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/empty"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

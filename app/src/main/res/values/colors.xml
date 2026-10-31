@@ -1,0 +1,12 @@
+<resources>
+    <color name="background">#FF000000</color>
+    <color name="tile_background">#FF0B0B0D</color>
+    <color name="tile_glow">#1CFFFFFF</color>
+    <color name="tile_stroke">#14FFFFFF</color>
+    <color name="text_primary">#F0FFFFFF</color>
+    <color name="text_secondary">#75FFFFFF</color>
+    <color name="text_eyebrow">#52FFFFFF</color>
+    <color name="focus_stroke">#EBFFFFFF</color>
+    <color name="move_stroke">#FFB74D</color>
+    <color name="accent">#FFFFFFFF</color>
+</resources>

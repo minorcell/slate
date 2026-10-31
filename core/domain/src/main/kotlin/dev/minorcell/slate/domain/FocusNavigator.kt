@@ -6,7 +6,12 @@ enum class Direction { LEFT, RIGHT, UP, DOWN }
  * 网格焦点移动的纯计算。返回新的下标；无法移动时返回原下标。
  */
 object FocusNavigator {
-    fun next(current: Int, direction: Direction, columns: Int, count: Int): Int {
+    fun next(
+        current: Int,
+        direction: Direction,
+        columns: Int,
+        count: Int,
+    ): Int {
         if (count <= 0 || current !in 0 until count || columns <= 0) return current
         val row = current / columns
         val column = current % columns
@@ -24,7 +29,11 @@ object FocusNavigator {
     /**
      * 焦点需要回到首行时，找到同一列最靠上的元素。
      */
-    fun firstRowIndex(column: Int, columns: Int, count: Int): Int {
+    fun firstRowIndex(
+        column: Int,
+        columns: Int,
+        count: Int,
+    ): Int {
         if (count <= 0 || columns <= 0) return 0
         return column.coerceIn(0, columns - 1).coerceAtMost(count - 1)
     }

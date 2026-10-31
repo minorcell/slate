@@ -1,0 +1,10 @@
+<resources>
+    <dimen name="edge">61dp</dimen>
+    <dimen name="tile_w">240dp</dimen>
+    <dimen name="tile_h">135dp</dimen>
+    <dimen name="tile_gap">11dp</dimen>
+    <dimen name="tile_radius">19dp</dimen>
+    <dimen name="tool_size">43dp</dimen>
+    <dimen name="title_size">30sp</dimen>
+    <dimen name="clock_size">43sp</dimen>
+</resources>

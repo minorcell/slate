@@ -5,7 +5,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class AppOrderingTest {
-    private fun app(pkg: String, label: String = pkg) = AppEntry(pkg, "$pkg.Main", label)
+    private fun app(
+        pkg: String,
+        label: String = pkg,
+    ) = AppEntry(pkg, "$pkg.Main", label)
 
     @Test
     fun `saved order wins over label`() {

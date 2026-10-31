@@ -1,0 +1,12 @@
+complexity:
+  TooManyFunctions:
+    active: true
+    # Activity 天然是协调器，允许略高的方法数量。
+    thresholdInFiles: 15
+    thresholdInClasses: 15
+    thresholdInInterfaces: 15
+    thresholdInObjects: 15
+    thresholdInEnums: 15
+    ignoreDeprecated: true
+    ignorePrivate: false
+    ignoreOverridden: true

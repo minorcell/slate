@@ -10,8 +10,10 @@ class FocusNavigatorTest {
     private val columns = 3
     private val count = 5
 
-    private fun move(current: Int, direction: Direction) =
-        FocusNavigator.next(current, direction, columns, count)
+    private fun move(
+        current: Int,
+        direction: Direction,
+    ) = FocusNavigator.next(current, direction, columns, count)
 
     @Test
     fun `left moves within a row`() {
