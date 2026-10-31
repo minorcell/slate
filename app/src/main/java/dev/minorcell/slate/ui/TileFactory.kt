@@ -14,19 +14,15 @@ import android.widget.ImageView
 import android.widget.TextView
 import dev.minorcell.slate.R
 import dev.minorcell.slate.domain.model.AppEntry
-import dev.minorcell.slate.domain.model.Builtin
 import dev.minorcell.slate.ui.shell.ScreenMetrics
 
 /**
- * 一行里卡片的尺寸，全部用屏幕比例表示。
- *
- * 信号行最小，常用行最大，应用行居中；比例来自原型在 1920×1080 上的取值。
+ * 一行里卡片的尺寸，全部用屏幕比例表示。常用行略大，应用行略小。
  */
 enum class TileSpec(
     val widthRatio: Float,
     val heightRatio: Float,
 ) {
-    Source(0.170f, 0.115f),
     Pinned(0.220f, 0.195f),
     App(0.168f, 0.150f),
 }
@@ -37,11 +33,7 @@ private const val ICON_LIFT_RATIO = 0.07f
 private const val LABEL_RATIO = 0.026f
 
 /**
- * 把一个 [AppEntry] 渲染成桌面卡片。
- *
- * 只负责视觉：banner 优先，缺失时退回图标 + 名称。
- * 内置应用与信号源没有 banner，统一使用 `tile_bg` 的暗色表面加线稿图标。
- * 交互（点击、长按、焦点）由 [dev.minorcell.slate.ui.screen.HomeScreen] 绑定。
+ * 把一个 [AppEntry] 渲染成桌面卡片：有 banner 用 banner，否则图标加名称。
  */
 class TileFactory(private val activity: Activity) {
     private val metrics = ScreenMetrics(activity)
@@ -54,12 +46,6 @@ class TileFactory(private val activity: Activity) {
         view.tag = app
         view.findViewById<TextView>(R.id.label).text = app.label
         view.contentDescription = app.label
-        val builtin = app.builtin
-        if (builtin != null) {
-            icon(view).setImageResource(iconOf(builtin))
-            return view
-        }
-
         val visuals = visualsFor(app.packageName)
         val bannerView = view.findViewById<ImageView>(R.id.banner)
         if (visuals.banner != null) {
@@ -67,25 +53,10 @@ class TileFactory(private val activity: Activity) {
             bannerView.visibility = View.VISIBLE
             view.findViewById<View>(R.id.fallback).visibility = View.GONE
         } else {
-            icon(view).setImageDrawable(visuals.icon)
+            view.findViewById<ImageView>(R.id.icon).setImageDrawable(visuals.icon)
         }
         return view
     }
-
-    /** 没有对应 AppEntry 的卡片，例如电视输入源。 */
-    fun plain(
-        label: String,
-        iconRes: Int,
-        spec: TileSpec = TileSpec.App,
-    ): View {
-        val view = inflate(spec)
-        view.findViewById<TextView>(R.id.label).text = label
-        view.contentDescription = label
-        icon(view).setImageResource(iconRes)
-        return view
-    }
-
-    private fun icon(view: View): ImageView = view.findViewById(R.id.icon)
 
     private fun visualsFor(packageName: String): Visuals =
         try {
@@ -99,14 +70,6 @@ class TileFactory(private val activity: Activity) {
             Visuals(null, null)
         }
 
-    private fun iconOf(builtin: Builtin): Int =
-        when (builtin) {
-            Builtin.Settings -> R.drawable.ic_builtin_settings
-            Builtin.Gallery -> R.drawable.ic_builtin_gallery
-            Builtin.Player -> R.drawable.ic_builtin_player
-            Builtin.Files -> R.drawable.ic_builtin_files
-        }
-
     private fun inflate(spec: TileSpec): View {
         val view = LayoutInflater.from(activity).inflate(R.layout.tile, null, false)
         view.clipToOutline = true
@@ -118,7 +81,7 @@ class TileFactory(private val activity: Activity) {
                 setMargins(gap, gap, gap, gap)
             }
         val iconSize = (height * ICON_RATIO).toInt()
-        icon(view).apply {
+        view.findViewById<ImageView>(R.id.icon).apply {
             layoutParams =
                 FrameLayout.LayoutParams(iconSize, iconSize).apply {
                     gravity = Gravity.CENTER

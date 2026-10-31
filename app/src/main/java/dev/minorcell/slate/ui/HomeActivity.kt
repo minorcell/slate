@@ -4,13 +4,13 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.util.TypedValue
 import android.view.KeyEvent
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -19,17 +19,10 @@ import android.window.OnBackInvokedDispatcher
 import dev.minorcell.slate.R
 import dev.minorcell.slate.data.AppRepository
 import dev.minorcell.slate.data.SharedPreferencesStore
-import dev.minorcell.slate.data.media.LocalMedia
-import dev.minorcell.slate.data.system.TvSources
-import dev.minorcell.slate.domain.model.Builtin
-import dev.minorcell.slate.ui.screen.FilesScreen
-import dev.minorcell.slate.ui.screen.GalleryScreen
 import dev.minorcell.slate.ui.screen.HomeScreen
-import dev.minorcell.slate.ui.screen.PlayerScreen
 import dev.minorcell.slate.ui.screen.SettingsScreen
 import dev.minorcell.slate.ui.shell.AppScreen
 import dev.minorcell.slate.ui.shell.ScreenMetrics
-import dev.minorcell.slate.ui.shell.StorageAccess
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -73,12 +66,21 @@ class HomeActivity : Activity() {
                 activity = this,
                 repository = repository,
                 prefs = prefs,
-                sources = TvSources(this),
                 tiles = TileFactory(this),
                 scope = scope,
                 launch = ::launch,
-                openBuiltin = ::openBuiltin,
             )
+        findViewById<View>(R.id.settings).apply {
+            setOnClickListener { openSettings() }
+            setOnKeyListener { _, keyCode, event ->
+                if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    home.requestInitialFocus()
+                    true
+                } else {
+                    false
+                }
+            }
+        }
         scope.launch {
             repository.packageChanges().collect { home.reload() }
         }
@@ -141,33 +143,14 @@ class HomeActivity : Activity() {
         goBack()
     }
 
-    @Deprecated("Use the platform callback until the activity moves off the framework result API.")
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray,
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != StorageAccess.REQUEST_CODE) return
-        val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-        stack.lastOrNull()?.onPermissionResult(granted)
-    }
-
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val top = stack.lastOrNull()
         if ((top ?: home).onDirection(event)) return true
         return super.dispatchKeyEvent(event)
     }
 
-    private fun openBuiltin(builtin: Builtin) {
-        val screen =
-            when (builtin) {
-                Builtin.Settings -> SettingsScreen(this, ::launch)
-                Builtin.Gallery -> GalleryScreen(this, LocalMedia(this), scope)
-                Builtin.Player -> PlayerScreen(this, LocalMedia(this), TileFactory(this), scope)
-                Builtin.Files -> FilesScreen(this, LocalMedia(this), scope, ::launch)
-            }
-        push(screen)
+    private fun openSettings() {
+        push(SettingsScreen(this, ::launch))
     }
 
     private fun push(screen: AppScreen) {

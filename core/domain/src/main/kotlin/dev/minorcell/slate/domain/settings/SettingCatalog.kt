@@ -19,6 +19,9 @@ sealed interface SettingRow {
         override val id: String,
         val target: HandoffTarget,
     ) : SettingRow
+
+    /** 只给一句操作提示的行，例如信号源需要按遥控器按键。 */
+    data class Hint(override val id: String) : SettingRow
 }
 
 enum class HandoffTarget {
@@ -48,6 +51,7 @@ object SettingRanges {
  * 直接指向电视自己的图像设置。
  */
 object SettingCatalog {
+    const val SOURCE = "source"
     const val PICTURE = "picture"
     const val SOUND_MODE = "sound_mode"
     const val NETWORK = "network"
@@ -56,6 +60,7 @@ object SettingCatalog {
 
     fun rows(): List<SettingRow> =
         listOf(
+            SettingRow.Hint(SOURCE),
             SettingRow.Handoff(PICTURE, HandoffTarget.Picture),
             SettingRow.Handoff(SOUND_MODE, HandoffTarget.SoundMode),
             SettingRow.Handoff(NETWORK, HandoffTarget.Network),

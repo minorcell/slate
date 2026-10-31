@@ -18,14 +18,10 @@ import android.widget.Toast
 import dev.minorcell.slate.R
 import dev.minorcell.slate.data.AppRepository
 import dev.minorcell.slate.data.Preferences
-import dev.minorcell.slate.data.system.SourceKind
-import dev.minorcell.slate.data.system.TvSource
-import dev.minorcell.slate.data.system.TvSources
 import dev.minorcell.slate.domain.AppOrdering
 import dev.minorcell.slate.domain.home.PinnedApps
 import dev.minorcell.slate.domain.home.ShelfFocus
 import dev.minorcell.slate.domain.model.AppEntry
-import dev.minorcell.slate.domain.model.Builtin
 import dev.minorcell.slate.ui.Menus
 import dev.minorcell.slate.ui.TileFactory
 import dev.minorcell.slate.ui.TileSpec
@@ -44,13 +40,12 @@ class HomeScreen(
     private val activity: Activity,
     private val repository: AppRepository,
     private val prefs: Preferences,
-    private val sources: TvSources,
     private val tiles: TileFactory,
     private val scope: CoroutineScope,
     private val launch: (Intent) -> Unit,
-    private val openBuiltin: (Builtin) -> Unit,
 ) : AppScreen {
     private val metrics = ScreenMetrics(activity)
+    private val settingsButton: View? = activity.findViewById(R.id.settings)
     private val shelves = activity.findViewById<LinearLayout>(R.id.shelves)
     private val scroller = activity.findViewById<ScrollView>(R.id.scroll)
     private val title = activity.findViewById<TextView>(R.id.title)
@@ -71,9 +66,8 @@ class HomeScreen(
         val ticket = ++loadTicket
         scope.launch {
             val installed = withContext(Dispatchers.IO) { repository.load() }
-            val inputs = withContext(Dispatchers.IO) { sources.load() }
             if (ticket != loadTicket) return@launch
-            render(installed, inputs)
+            render(installed)
         }
     }
 
@@ -133,46 +127,16 @@ class HomeScreen(
         return true
     }
 
-    private fun render(
-        installed: List<AppEntry>,
-        inputs: List<TvSource>,
-    ) {
-        val ordered = AppOrdering.sort(builtins() + installed, prefs.order)
+    private fun render(installed: List<AppEntry>) {
+        val ordered = AppOrdering.sort(installed, prefs.order)
         apps.clear()
         ordered.forEach { apps[it.packageName] = it }
         rows.clear()
         shelves.removeAllViews()
-        addSources(inputs)
         addApps(PINNED, R.string.shelf_pinned, pinnedEntries())
         addApps(APPS, R.string.shelf_apps, ordered)
         empty.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
         restore()
-    }
-
-    /**
-     * 信号行只用系统给的数据。
-     *
-     * 电视框架没有公开的切换输入接口，TvInputInfo 只提供 createSetupIntent。
-     * TIF 里有输入就逐项列出；没有（VIDAA 就是这种）就放一个「信号源」入口，
-     * 点了提示按遥控器上的信号源键，不伪造 HDMI 磁贴。
-     */
-    private fun addSources(inputs: List<TvSource>) {
-        val shelf = inflateShelf(SOURCES, R.string.shelf_sources)
-        if (inputs.isEmpty()) {
-            val id = SOURCE_PREFIX + PANEL_ID
-            shelf.ids.add(id)
-            shelf.row.addView(signalTile(id))
-            shelves.addView(shelf.block)
-            rows.add(shelf)
-            return
-        }
-        inputs.forEach { source ->
-            val id = SOURCE_PREFIX + source.id
-            shelf.ids.add(id)
-            shelf.row.addView(sourceTile(id, source))
-        }
-        shelves.addView(shelf.block)
-        rows.add(shelf)
     }
 
     private fun addApps(
@@ -214,45 +178,10 @@ class HomeScreen(
 
     private fun pinnedEntries(): List<AppEntry> = prefs.pinned.mapNotNull { apps[it] }
 
-    private fun builtins(): List<AppEntry> =
-        listOf(
-            entry(Builtin.Settings, R.string.settings),
-            entry(Builtin.Gallery, R.string.gallery),
-            entry(Builtin.Player, R.string.player),
-            entry(Builtin.Files, R.string.files),
-        )
-
-    private fun entry(
-        builtin: Builtin,
-        label: Int,
-    ): AppEntry = AppEntry(builtin.id, "", activity.getString(label), builtin)
-
     private fun appTile(
         app: AppEntry,
         spec: TileSpec,
     ): View = tiles.create(app, spec).apply { bind(this, app.packageName, app.label, app) }
-
-    private fun signalTile(id: String): View {
-        val label = activity.getString(R.string.source_signal)
-        return tiles.plain(label, R.drawable.ic_source_tv, TileSpec.Source).apply {
-            bind(this, id, label, null)
-        }
-    }
-
-    private fun sourceTile(
-        id: String,
-        source: TvSource,
-    ): View =
-        tiles.plain(source.label, sourceIcon(source.kind), TileSpec.Source).apply {
-            bind(this, id, source.label, null)
-        }
-
-    private fun sourceIcon(kind: SourceKind): Int =
-        when (kind) {
-            SourceKind.HDMI -> R.drawable.ic_source_hdmi
-            SourceKind.AV -> R.drawable.ic_source_av
-            SourceKind.TUNER, SourceKind.OTHER -> R.drawable.ic_source_tv
-        }
 
     private fun bind(
         view: View,
@@ -280,22 +209,8 @@ class HomeScreen(
     }
 
     private fun activate(id: String) {
-        if (id.startsWith(SOURCE_PREFIX)) {
-            val inputId = id.removePrefix(SOURCE_PREFIX)
-            if (inputId == PANEL_ID) {
-                Toast.makeText(activity, R.string.source_hint, Toast.LENGTH_LONG).show()
-            } else {
-                sources.setupIntent(inputId)?.let(launch)
-            }
-            return
-        }
         val app = apps[id] ?: return
-        val builtin = app.builtin
-        if (builtin != null) {
-            openBuiltin(builtin)
-        } else {
-            launch(leanback(app))
-        }
+        launch(leanback(app))
     }
 
     private fun showMenu(
@@ -324,7 +239,7 @@ class HomeScreen(
         actions += if (shelfKey == PINNED || pinned) Menus.Action.UNPIN else Menus.Action.PIN
         actions += Menus.Action.MOVE
         actions += Menus.Action.INFO
-        if (app.builtin == null) actions += Menus.Action.UNINSTALL
+        actions += Menus.Action.UNINSTALL
         return actions
     }
 
@@ -344,10 +259,6 @@ class HomeScreen(
     }
 
     private fun info(app: AppEntry) {
-        if (app.builtin != null) {
-            Toast.makeText(activity, R.string.builtin_info, Toast.LENGTH_SHORT).show()
-            return
-        }
         launch(
             Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -422,7 +333,10 @@ class HomeScreen(
     private fun focusVertical(delta: Int) {
         if (rows.isEmpty()) return
         val nextKey = ShelfFocus.adjacent(rows.map { it.key }, shelfKey, delta)
-        if (nextKey == shelfKey) return
+        if (nextKey == shelfKey) {
+            if (delta < 0) settingsButton?.requestFocus()
+            return
+        }
         val next = shelf(nextKey) ?: return
         val target = currentView()?.let { centerX(it) } ?: 0
         val centers = next.ids.map { id -> child(next, id)?.let { centerX(it) } ?: 0 }
@@ -519,11 +433,8 @@ class HomeScreen(
     )
 
     private companion object {
-        const val SOURCES = "sources"
         const val PINNED = "pinned"
         const val APPS = "apps"
-        const val SOURCE_PREFIX = "tv:"
-        const val PANEL_ID = "panel"
         const val FOCUS_SCALE = 1.085f
         const val ANIMATION_MS = 120L
         const val SHELF_TITLE_RATIO = 0.020f

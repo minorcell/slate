@@ -1,11 +1,10 @@
 package dev.minorcell.slate.domain.home
 
-import dev.minorcell.slate.domain.model.Builtin
-
 object PinnedApps {
     const val LIMIT = 7
 
-    val defaultIds: List<String> = Builtin.entries.map { it.id }
+    /** 桌面不自带应用，常用行默认是空的，等用户自己放。 */
+    val defaultIds: List<String> = emptyList()
 
     fun add(
         pinned: List<String>,

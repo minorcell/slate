@@ -12,10 +12,11 @@ class SettingRangesTest {
     }
 
     @Test
-    fun `catalog lists system pages in a stable order`() {
+    fun `catalog starts with the source hint and ends with developer options`() {
         val rows = SettingCatalog.rows()
-        assertEquals(HandoffTarget.Picture, (rows.first() as SettingRow.Handoff).target)
+        assertEquals(SettingCatalog.SOURCE, rows.first().id)
+        assertEquals(HandoffTarget.Picture, (rows[1] as SettingRow.Handoff).target)
         assertEquals(HandoffTarget.DeveloperOptions, (rows.last() as SettingRow.Handoff).target)
-        assertEquals(5, rows.size)
+        assertEquals(6, rows.size)
     }
 }

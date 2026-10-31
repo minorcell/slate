@@ -2,7 +2,6 @@ package dev.minorcell.slate.data
 
 import android.content.Context
 import dev.minorcell.slate.domain.home.PinnedApps
-import dev.minorcell.slate.domain.model.Builtin
 
 /**
  * 桌面需要持久化的用户状态。
@@ -27,11 +26,11 @@ class SharedPreferencesStore(context: Context) : Preferences {
         set(value) = store.edit().putString(KEY_PINNED, value.joinToString(SEPARATOR)).apply()
 
     override var lastFocused: String?
-        get() = store.getString(KEY_LAST_FOCUSED, null)?.let(Builtin::normalizeId)
+        get() = store.getString(KEY_LAST_FOCUSED, null)
         set(value) = store.edit().putString(KEY_LAST_FOCUSED, value).apply()
 
     private fun ids(key: String): List<String> =
-        store.getString(key, "").orEmpty().split(SEPARATOR).filter { it.isNotEmpty() }.map(Builtin::normalizeId)
+        store.getString(key, "").orEmpty().split(SEPARATOR).filter { it.isNotEmpty() }
 
     private companion object {
         const val KEY_ORDER = "order"

@@ -14,7 +14,6 @@ interface AppScreen {
 
     fun onHostPause() {}
 
-    fun onPermissionResult(granted: Boolean) {}
 
     fun destroy() {}
 }

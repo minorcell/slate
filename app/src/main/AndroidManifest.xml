@@ -9,13 +9,6 @@
         android:required="false" />
 
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <queries>
         <package android:name="com.android.tv.settings" />
@@ -33,12 +26,6 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Slate">
-
-        <provider
-            android:name=".install.InstallFileProvider"
-            android:authorities="dev.minorcell.slate.install"
-            android:exported="false"
-            android:grantUriPermissions="true" />
 
         <activity
             android:name=".ui.HomeActivity"
