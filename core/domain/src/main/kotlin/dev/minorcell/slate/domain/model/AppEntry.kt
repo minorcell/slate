@@ -10,4 +10,5 @@ data class AppEntry(
     val packageName: String,
     val activityName: String,
     val label: String,
+    val builtin: Builtin? = null,
 )
