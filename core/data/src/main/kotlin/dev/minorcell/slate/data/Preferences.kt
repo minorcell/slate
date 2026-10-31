@@ -9,7 +9,6 @@ import android.content.Context
  */
 interface Preferences {
     var order: List<String>
-    var hidden: Set<String>
     var lastFocused: String?
 }
 
@@ -20,17 +19,12 @@ class SharedPreferencesStore(context: Context) : Preferences {
         get() = store.getString(KEY_ORDER, "").orEmpty().split(SEPARATOR).filter { it.isNotEmpty() }
         set(value) = store.edit().putString(KEY_ORDER, value.joinToString(SEPARATOR)).apply()
 
-    override var hidden: Set<String>
-        get() = store.getStringSet(KEY_HIDDEN, emptySet()).orEmpty().toSet()
-        set(value) = store.edit().putStringSet(KEY_HIDDEN, value).apply()
-
     override var lastFocused: String?
         get() = store.getString(KEY_LAST_FOCUSED, null)
         set(value) = store.edit().putString(KEY_LAST_FOCUSED, value).apply()
 
     private companion object {
         const val KEY_ORDER = "order"
-        const val KEY_HIDDEN = "hidden"
         const val KEY_LAST_FOCUSED = "last_focused"
         const val SEPARATOR = "\u0000"
     }

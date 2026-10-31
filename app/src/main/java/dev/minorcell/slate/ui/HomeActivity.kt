@@ -17,7 +17,6 @@ import dev.minorcell.slate.data.AppRepository
 import dev.minorcell.slate.data.Preferences
 import dev.minorcell.slate.data.SharedPreferencesStore
 import dev.minorcell.slate.domain.AppOrdering
-import dev.minorcell.slate.domain.AppVisibility
 import dev.minorcell.slate.domain.Direction
 import dev.minorcell.slate.domain.FocusNavigator
 import dev.minorcell.slate.domain.model.AppEntry
@@ -31,7 +30,7 @@ import kotlinx.coroutines.withContext
 /**
  * 电视桌面主界面：加载应用、渲染网格、处理焦点与长按菜单。
  *
- * 业务规则（排序、隐藏、焦点计算）都在 core:domain，
+ * 业务规则（排序、焦点计算）都在 core:domain，
  * 卡片渲染在 [TileFactory]，对话框在 [Menus]。
  */
 class HomeActivity : Activity() {
@@ -62,12 +61,9 @@ class HomeActivity : Activity() {
         title = findViewById(R.id.title)
         empty = findViewById(R.id.empty)
 
-        findViewById<View>(R.id.settings).setOnClickListener {
-            launch(Intent(Settings.ACTION_SETTINGS))
-        }
-        findViewById<View>(R.id.hidden).setOnClickListener { showHidden() }
-        listOf(R.id.settings, R.id.hidden).forEach { id ->
-            findViewById<View>(id).setOnFocusChangeListener { view, focused ->
+        findViewById<View>(R.id.settings).apply {
+            setOnClickListener { launch(Intent(Settings.ACTION_SETTINGS)) }
+            setOnFocusChangeListener { view, focused ->
                 if (focused) title.text = view.contentDescription
             }
         }
@@ -108,7 +104,7 @@ class HomeActivity : Activity() {
     }
 
     private fun render() {
-        visible = AppVisibility.visible(apps, prefs.hidden)
+        visible = apps
         grid.removeAllViews()
         visible.forEach { grid.addView(tile(it)) }
         empty.visibility = if (visible.isEmpty()) View.VISIBLE else View.GONE
@@ -162,10 +158,6 @@ class HomeActivity : Activity() {
         Menus.showActions(this, app) { action ->
             when (action) {
                 Menus.Action.MOVE -> startMove(app)
-                Menus.Action.HIDE -> {
-                    prefs.hidden = AppVisibility.hide(prefs.hidden, app.packageName)
-                    render()
-                }
                 Menus.Action.INFO ->
                     launch(
                         Intent(
@@ -181,13 +173,6 @@ class HomeActivity : Activity() {
                         ),
                     )
             }
-        }
-    }
-
-    private fun showHidden() {
-        Menus.showHidden(this, apps.filter { it.packageName in prefs.hidden }) { app ->
-            prefs.hidden = AppVisibility.unhide(prefs.hidden, app.packageName)
-            render()
         }
     }
 

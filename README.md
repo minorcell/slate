@@ -4,7 +4,7 @@
 
 - **纯原生 View + Kotlin**，不引入 AndroidX UI、不使用 Compose
 - 界面全黑，应用网格自动排布
-- 长按管理应用：移动、隐藏、查看信息、卸载
+- 长按管理应用：移动、查看信息、卸载
 - 应用安装或卸载后自动刷新
 - 记住上次的焦点位置
 - 中英文界面
@@ -15,7 +15,7 @@
 slate/
 ├── app/          # Android 应用：Activity、View、资源
 ├── core/
-│   ├── domain/   # 纯 Kotlin：模型、排序、隐藏、焦点计算（可 JVM 单测）
+│   ├── domain/   # 纯 Kotlin：模型、排序、焦点计算（可 JVM 单测）
 │   └── data/     # Android library：PackageManager 查询、偏好存储
 └── .github/      # CI
 ```

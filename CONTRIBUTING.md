@@ -12,7 +12,7 @@
 
 ```
 feat: 记住上次聚焦的应用
-fix: 隐藏应用后焦点丢失
+fix: 移动应用后焦点丢失
 refactor: 把排序逻辑移入 core:domain
 chore: 升级 AGP
 ```

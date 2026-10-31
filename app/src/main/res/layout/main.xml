@@ -41,20 +41,9 @@
         </LinearLayout>
 
         <ImageButton
-            android:id="@+id/hidden"
-            android:layout_width="@dimen/tool_size"
-            android:layout_height="@dimen/tool_size"
-            android:background="@drawable/btn_bg"
-            android:contentDescription="@string/hidden_apps"
-            android:focusable="true"
-            android:src="@drawable/ic_hidden"
-            android:tint="@color/btn_tint" />
-
-        <ImageButton
             android:id="@+id/settings"
             android:layout_width="@dimen/tool_size"
             android:layout_height="@dimen/tool_size"
-            android:layout_marginStart="9dp"
             android:background="@drawable/btn_bg"
             android:contentDescription="@string/settings"
             android:focusable="true"
