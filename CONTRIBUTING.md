@@ -1,5 +1,7 @@
 # 参与开发
 
+环境搭建、模拟器与构建见 [docs/development.md](docs/development.md)。
+
 ## 分支
 
 - `main` 保持可构建、可发布
