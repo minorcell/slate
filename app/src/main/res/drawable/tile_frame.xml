@@ -4,16 +4,18 @@
         <shape>
             <corners android:radius="@dimen/tile_radius" />
             <stroke
-                android:width="2dp"
+                android:width="3dp"
                 android:color="@color/move_stroke" />
+            <solid android:color="@android:color/transparent" />
         </shape>
     </item>
     <item android:state_focused="true">
         <shape>
             <corners android:radius="@dimen/tile_radius" />
             <stroke
-                android:width="2dp"
+                android:width="3dp"
                 android:color="@color/focus_stroke" />
+            <solid android:color="@android:color/transparent" />
         </shape>
     </item>
     <item android:drawable="@android:color/transparent" />

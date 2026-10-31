@@ -1,4 +1,4 @@
-package dev.minorcell.slate.ui
+package dev.minorcell.slate.ui.home
 
 import android.app.Activity
 import android.app.AlertDialog
@@ -8,7 +8,7 @@ import dev.minorcell.slate.R
  * 桌面上用到的对话框。与 Activity 解耦，便于复用和后续替换实现。
  */
 object Menus {
-    enum class Action { PIN, UNPIN, MOVE, INFO, UNINSTALL }
+    enum class Action { MOVE, INFO, UNINSTALL }
 
     fun showActions(
         activity: Activity,
@@ -26,8 +26,6 @@ object Menus {
     private val Action.label: Int
         get() =
             when (this) {
-                Action.PIN -> R.string.pin
-                Action.UNPIN -> R.string.unpin
                 Action.MOVE -> R.string.move
                 Action.INFO -> R.string.app_info
                 Action.UNINSTALL -> R.string.uninstall

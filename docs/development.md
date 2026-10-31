@@ -19,16 +19,21 @@ export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDR
 
 ```
 slate/
-├── app/          # Android 应用：Activity、View、资源
+├── app/
+│   ├── ui/HomeActivity.kt     # 窗口、按键、把各块接起来
+│   ├── ui/theme/              # Inter 字重和光学尺寸
+│   ├── ui/home/               # 应用行、卡片、菜单、磨砂底板
+│   ├── ui/shell/              # 按窗口像素取尺寸
+│   └── wallpaper/             # 背景绘制，以及烤好的磨砂图
 ├── core/
-│   ├── domain/   # 纯 Kotlin：模型、排序、焦点计算（可 JVM 单测）
-│   └── data/     # Android library：PackageManager 查询、偏好存储
-├── docs/         # 文档
-├── prototype/    # HTML 交互原型，仅用于推敲交互，不参与构建
-└── .github/      # CI
+│   ├── domain/                # 纯 Kotlin：排序、焦点（可 JVM 单测）
+│   └── data/                  # PackageManager、偏好、系统设置入口
+├── docs/
+├── prototype/                 # HTML 原型，不参与构建
+└── .github/
 ```
 
-业务规则放在 `core:domain`，不依赖 Android，全部可以跑单元测试；`core:data` 负责与系统打交道；`app` 只做渲染和事件绑定。
+业务规则放在 `core:domain`，不依赖 Android，全部可以跑单元测试。`core:data` 负责与系统打交道。`app` 按上面的包拆开：背景、字体、首页各自一块，不堆进同一个类。
 
 ## 构建
 

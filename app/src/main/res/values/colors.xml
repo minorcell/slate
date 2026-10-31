@@ -1,6 +1,7 @@
 <resources>
     <color name="background">#FF000000</color>
     <color name="tile_background">#FF0B0B0D</color>
+    <color name="shelf_plate">#14FFFFFF</color>
     <color name="tile_glow">#1CFFFFFF</color>
     <color name="tile_stroke">#14FFFFFF</color>
     <color name="text_primary">#F0FFFFFF</color>

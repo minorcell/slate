@@ -4,5 +4,6 @@
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowShowWallpaper">false</item>
         <item name="android:colorAccent">@color/accent</item>
+        <item name="android:defaultFocusHighlightEnabled">false</item>
     </style>
 </resources>

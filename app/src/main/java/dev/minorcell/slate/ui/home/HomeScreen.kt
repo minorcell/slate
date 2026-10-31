@@ -1,11 +1,11 @@
-package dev.minorcell.slate.ui.screen
+package dev.minorcell.slate.ui.home
 
 import android.app.Activity
-import android.util.TypedValue
 import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.util.TypedValue
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -14,27 +14,23 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import dev.minorcell.slate.R
 import dev.minorcell.slate.data.AppRepository
 import dev.minorcell.slate.data.Preferences
 import dev.minorcell.slate.domain.AppOrdering
-import dev.minorcell.slate.domain.home.PinnedApps
 import dev.minorcell.slate.domain.home.ShelfFocus
 import dev.minorcell.slate.domain.model.AppEntry
-import dev.minorcell.slate.ui.Menus
-import dev.minorcell.slate.ui.TileFactory
-import dev.minorcell.slate.ui.TileSpec
 import dev.minorcell.slate.ui.shell.AppScreen
 import dev.minorcell.slate.ui.shell.ScreenMetrics
+import dev.minorcell.slate.ui.theme.SlateType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 三行桌面：信号、常用、应用。上下换行，左右在行内移动，都不循环。
- * 信号行只展示系统报上来的输入源，不在这里切换。
+ * 一行应用。左右在行内移动，不循环。
+ * 焦点上的应用把名称写在时钟下面。设置按钮打开系统设置，不进入本应用的页面。
  */
 class HomeScreen(
     private val activity: Activity,
@@ -49,6 +45,7 @@ class HomeScreen(
     private val shelves = activity.findViewById<LinearLayout>(R.id.shelves)
     private val scroller = activity.findViewById<ScrollView>(R.id.scroll)
     private val title = activity.findViewById<TextView>(R.id.title)
+    private val kicker = activity.findViewById<TextView>(R.id.kicker)
     private val empty = activity.findViewById<TextView>(R.id.empty)
     private val rows = mutableListOf<Shelf>()
     private val apps = mutableMapOf<String, AppEntry>()
@@ -95,6 +92,7 @@ class HomeScreen(
         val moving = movingId
         if (moving != null) return moveKey(event)
         if (event.action != KeyEvent.ACTION_DOWN) return false
+        if (settingsButton?.hasFocus() == true) return settingsKey(event)
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 focusHorizontal(-1)
@@ -116,12 +114,22 @@ class HomeScreen(
         }
     }
 
+    private fun settingsKey(event: KeyEvent): Boolean {
+        val directional = event.keyCode in LATERAL || event.keyCode in VERTICAL
+        if (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            val shelf = shelf(shelfKey) ?: rows.firstOrNull()
+            val id = shelf?.ids?.let { focusedId?.takeIf { key -> key in it } ?: it.firstOrNull() }
+            if (shelf != null && id != null) focus(shelf, id)
+        }
+        return directional
+    }
+
     override fun onBack(): Boolean {
         if (movingId != null) {
             endMove()
             return true
         }
-        val target = shelf(PINNED) ?: rows.firstOrNull() ?: return true
+        val target = rows.firstOrNull() ?: return true
         val first = target.ids.firstOrNull() ?: return true
         if (shelfKey != target.key || focusedId != first) focus(target, first)
         return true
@@ -133,9 +141,9 @@ class HomeScreen(
         ordered.forEach { apps[it.packageName] = it }
         rows.clear()
         shelves.removeAllViews()
-        addApps(PINNED, R.string.shelf_pinned, pinnedEntries())
         addApps(APPS, R.string.shelf_apps, ordered)
         empty.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
+        if (rows.isEmpty()) clearHero()
         restore()
     }
 
@@ -146,10 +154,9 @@ class HomeScreen(
     ) {
         if (entries.isEmpty()) return
         val shelf = inflateShelf(key, title)
-        val spec = if (key == PINNED) TileSpec.Pinned else TileSpec.App
         entries.forEach { app ->
             shelf.ids.add(app.packageName)
-            shelf.row.addView(appTile(app, spec))
+            shelf.row.addView(appTile(app))
         }
         shelves.addView(shelf.block)
         rows.add(shelf)
@@ -162,9 +169,15 @@ class HomeScreen(
         val block = LayoutInflater.from(activity).inflate(R.layout.shelf, shelves, false)
         block.findViewById<TextView>(R.id.shelf_title).apply {
             setText(title)
+            typeface = SlateType.shelf(activity)
             setTextSize(TypedValue.COMPLEX_UNIT_PX, metrics.h(SHELF_TITLE_RATIO).toFloat())
         }
-        block.setPadding(0, 0, 0, metrics.h(SHELF_BOTTOM_RATIO))
+        block.setPadding(
+            metrics.w(SHELF_INSET_RATIO),
+            metrics.h(SHELF_TOP_RATIO),
+            metrics.w(SHELF_INSET_RATIO),
+            metrics.h(SHELF_BOTTOM_RATIO),
+        )
         val scroll = block.findViewById<HorizontalScrollView>(R.id.shelf_scroll)
         (scroll.layoutParams as ViewGroup.MarginLayoutParams).topMargin = metrics.h(SHELF_GAP_RATIO)
         val row = block.findViewById<LinearLayout>(R.id.shelf_row)
@@ -172,21 +185,15 @@ class HomeScreen(
         row.clipChildren = false
         row.clipToPadding = false
         // 两端留白：首尾卡片放大后不会顶出屏幕，最后一项也能完整滚进来。
-        row.setPadding(metrics.w(ROW_START_RATIO), 0, metrics.w(ROW_END_RATIO), 0)
+        row.setPadding(0, metrics.h(ROW_VERTICAL_RATIO), metrics.w(ROW_END_RATIO), metrics.h(ROW_VERTICAL_RATIO))
         return Shelf(key, block, scroll, row, mutableListOf())
     }
 
-    private fun pinnedEntries(): List<AppEntry> = prefs.pinned.mapNotNull { apps[it] }
-
-    private fun appTile(
-        app: AppEntry,
-        spec: TileSpec,
-    ): View = tiles.create(app, spec).apply { bind(this, app.packageName, app.label, app) }
+    private fun appTile(app: AppEntry): View = tiles.create(app).apply { bind(this, app.packageName, app) }
 
     private fun bind(
         view: View,
         id: String,
-        label: String,
         app: AppEntry?,
     ) {
         view.tag = id
@@ -197,7 +204,7 @@ class HomeScreen(
             shelfKey = shelfOf(focusedView)?.key ?: shelfKey
             focusedId = id
             prefs.lastFocused = id
-            title.text = if (movingId == id) activity.getString(R.string.move_hint) else label
+            present(id)
         }
         view.setOnClickListener {
             if (movingId != null) endMove() else activate(id)
@@ -206,6 +213,20 @@ class HomeScreen(
             if (movingId == null && app != null) showMenu(shelfOf(view)?.key ?: APPS, app)
             true
         }
+    }
+
+    private fun present(id: String) {
+        val app = apps[id] ?: return
+        val moving = movingId == id
+        kicker.visibility = if (moving) View.VISIBLE else View.GONE
+        if (moving) kicker.setText(R.string.move_hint)
+        title.text = app.label
+        rows.forEach { row -> row.block.alpha = if (row.key == shelfKey) 1f else INACTIVE_SHELF }
+    }
+
+    private fun clearHero() {
+        kicker.visibility = View.GONE
+        title.text = ""
     }
 
     private fun activate(id: String) {
@@ -217,45 +238,15 @@ class HomeScreen(
         shelfKey: String,
         app: AppEntry,
     ) {
-        val actions = actionsFor(shelfKey, app)
+        val actions = listOf(Menus.Action.MOVE, Menus.Action.INFO, Menus.Action.UNINSTALL)
         dialog =
             Menus.showActions(activity, app.label, actions) { action ->
                 when (action) {
-                    Menus.Action.PIN -> pin(app.packageName)
-                    Menus.Action.UNPIN -> unpin(app.packageName)
                     Menus.Action.MOVE -> startMove(shelfKey, app.packageName)
                     Menus.Action.INFO -> info(app)
                     Menus.Action.UNINSTALL -> uninstall(app)
                 }
             }
-    }
-
-    private fun actionsFor(
-        shelfKey: String,
-        app: AppEntry,
-    ): List<Menus.Action> {
-        val actions = mutableListOf<Menus.Action>()
-        val pinned = app.packageName in prefs.pinned
-        actions += if (shelfKey == PINNED || pinned) Menus.Action.UNPIN else Menus.Action.PIN
-        actions += Menus.Action.MOVE
-        actions += Menus.Action.INFO
-        actions += Menus.Action.UNINSTALL
-        return actions
-    }
-
-    private fun pin(id: String) {
-        val next = PinnedApps.add(prefs.pinned, id)
-        if (next == null) {
-            Toast.makeText(activity, R.string.pin_limit, Toast.LENGTH_SHORT).show()
-            return
-        }
-        prefs.pinned = next
-        reload()
-    }
-
-    private fun unpin(id: String) {
-        prefs.pinned = PinnedApps.remove(prefs.pinned, id)
-        reload()
     }
 
     private fun info(app: AppEntry) {
@@ -284,7 +275,7 @@ class HomeScreen(
         movingShelf = key
         movingId = id
         child(shelf(key), id)?.isSelected = true
-        title.setText(R.string.move_hint)
+        present(id)
     }
 
     private fun endMove() {
@@ -294,9 +285,8 @@ class HomeScreen(
         movingId = null
         child(shelf(key), id)?.isSelected = false
         val shelf = shelf(key)
-        if (shelf != null && key == PINNED) prefs.pinned = shelf.ids.toList()
-        if (shelf != null && key == APPS) prefs.order = shelf.ids.toList()
-        title.text = apps[id]?.label ?: title.text
+        if (shelf != null) prefs.order = shelf.ids.toList()
+        present(id)
     }
 
     private fun moveKey(event: KeyEvent): Boolean {
@@ -433,16 +423,18 @@ class HomeScreen(
     )
 
     private companion object {
-        const val PINNED = "pinned"
         const val APPS = "apps"
-        const val FOCUS_SCALE = 1.085f
-        const val ANIMATION_MS = 120L
-        const val SHELF_TITLE_RATIO = 0.020f
-        const val SHELF_GAP_RATIO = 0.006f
-        const val SHELF_BOTTOM_RATIO = 0.007f
+        const val FOCUS_SCALE = 1.07f
+        const val ANIMATION_MS = 220L
+        const val SHELF_TITLE_RATIO = 0.028f
+        const val SHELF_GAP_RATIO = 0.008f
+        const val SHELF_TOP_RATIO = 0.02f
+        const val SHELF_BOTTOM_RATIO = 0.016f
+        const val SHELF_INSET_RATIO = 0.02f
         const val ROW_END_RATIO = 0.06f
-        const val ROW_START_RATIO = 0.012f
+        const val ROW_VERTICAL_RATIO = 0.016f
         const val TILE_EDGE_RATIO = 0.02f
+        const val INACTIVE_SHELF = 0.84f
         val LATERAL = setOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)
         val VERTICAL = setOf(KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN)
         val OK_KEYS = setOf(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER)

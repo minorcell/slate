@@ -23,6 +23,7 @@ class ScreenMetrics(activity: Activity) {
         } else {
             @Suppress("DEPRECATION")
             val display = manager.defaultDisplay
+
             @Suppress("DEPRECATION")
             val metrics = android.util.DisplayMetrics().also { display.getRealMetrics(it) }
             width = metrics.widthPixels

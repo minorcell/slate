@@ -4,12 +4,11 @@
     <dimen name="tile_h">135dp</dimen>
     <dimen name="tile_w_source">150dp</dimen>
     <dimen name="tile_h_source">60dp</dimen>
-    <dimen name="tile_w_pinned">190dp</dimen>
-    <dimen name="tile_h_pinned">100dp</dimen>
     <dimen name="tile_w_app">146dp</dimen>
     <dimen name="tile_h_app">74dp</dimen>
     <dimen name="tile_gap">11dp</dimen>
     <dimen name="tile_radius">19dp</dimen>
+    <dimen name="glass_radius">28dp</dimen>
     <dimen name="tool_size">43dp</dimen>
     <dimen name="title_size">30sp</dimen>
     <dimen name="clock_size">43sp</dimen>

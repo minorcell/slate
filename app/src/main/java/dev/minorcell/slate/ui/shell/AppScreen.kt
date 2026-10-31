@@ -14,6 +14,5 @@ interface AppScreen {
 
     fun onHostPause() {}
 
-
     fun destroy() {}
 }

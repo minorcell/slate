@@ -1,26 +1,11 @@
 <resources>
     <string name="app_name">Slate 桌面</string>
-    <string name="eyebrow">SLATE 桌面</string>
     <string name="settings">设置</string>
-    <string name="settings_hint">左右调节音量和亮度。图像、声音模式会打开电视自己的设置。</string>
-    <string name="picture">图像</string>
-    <string name="sound_mode">声音模式</string>
-    <string name="network">网络</string>
-    <string name="android_settings">安卓系统设置</string>
-    <string name="developer_options">开发者选项</string>
-    <string name="open_page">打开</string>
     <string name="move">移动</string>
     <string name="app_info">应用信息</string>
     <string name="uninstall">卸载</string>
     <string name="empty">没有找到可启动的应用</string>
-    <string name="cannot_open">无法打开应用</string>
+    <string name="cannot_open">无法打开</string>
     <string name="move_hint">方向键移动 · OK 完成</string>
-    <string name="pin">固定到常用</string>
-    <string name="unpin">移出常用</string>
-    <string name="pin_limit">常用最多 7 个</string>
-    <string name="shelf_pinned">常用</string>
     <string name="shelf_apps">应用</string>
-    <string name="source_signal">信号源</string>
-    <string name="source_action">遥控器信号源键</string>
-    <string name="source_hint">请按遥控器上的「信号源」键选择输入</string>
 </resources>
