@@ -21,7 +21,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class StoreScreen(
+/**
+ * 文件管理器：列出存储与 U 盘里的安装包，确定即安装。
+ *
+ * 目前只收安装包；照片和视频分别由相册、播放器读取 MediaStore。
+ */
+class FilesScreen(
     private val activity: Activity,
     private val media: LocalMedia,
     private val scope: CoroutineScope,
@@ -35,8 +40,8 @@ class StoreScreen(
     override val view: View = root
 
     init {
-        root.findViewById<TextView>(R.id.screen_title).setText(R.string.store)
-        root.findViewById<TextView>(R.id.screen_hint).setText(R.string.store_hint)
+        root.findViewById<TextView>(R.id.screen_title).setText(R.string.files)
+        root.findViewById<TextView>(R.id.screen_hint).setText(R.string.files_hint)
         empty.setOnClickListener { askOrLoad() }
     }
 
@@ -57,7 +62,14 @@ class StoreScreen(
     }
 
     private fun askOrLoad() {
-        if (StorageAccess.filesGranted(activity)) load() else StorageAccess.requestFiles(activity)
+        when {
+            StorageAccess.filesGranted(activity) -> load()
+            !asked || StorageAccess.canAskFiles(activity) -> {
+                asked = true
+                StorageAccess.requestFiles(activity)
+            }
+            else -> StorageAccess.openSettings(activity)
+        }
     }
 
     private fun load() {
@@ -92,9 +104,10 @@ class StoreScreen(
             launch(intent)
             return
         }
+        val data = file.uri ?: InstallFileProvider.uri(file.path)
         val intent =
             Intent(Intent.ACTION_VIEW)
-                .setDataAndType(InstallFileProvider.uri(file.path), APK_TYPE)
+                .setDataAndType(data, APK_TYPE)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         launch(intent)
@@ -106,7 +119,8 @@ class StoreScreen(
     }
 
     private fun showDenied() {
-        showMessage(R.string.allow_files)
+        val permanent = !StorageAccess.filesGranted(activity) && !StorageAccess.canAskFiles(activity)
+        showMessage(if (permanent) R.string.allow_files_settings else R.string.allow_files)
     }
 
     private fun showMessage(text: Int) {

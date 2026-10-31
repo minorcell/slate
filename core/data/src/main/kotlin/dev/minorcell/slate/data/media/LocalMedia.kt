@@ -18,6 +18,8 @@ data class ApkFile(
     val name: String,
     val path: String,
     val size: Long,
+    /** MediaStore 给出的 content URI；scoped storage 下比文件路径可靠。 */
+    val uri: Uri? = null,
 )
 
 class LocalMedia(private val context: Context) {
@@ -42,15 +44,67 @@ class LocalMedia(private val context: Context) {
             null
         }
 
+    /**
+     * 先问 MediaStore，再退回目录遍历。
+     *
+     * Android 10 起应用不能随意遍历 /storage，MediaStore 是唯一稳定来源；
+     * 老旧电视（API 28 及以下）没有 scoped storage，遍历能补上 MediaStore 没收录的文件。
+     */
     fun apks(): List<ApkFile> {
-        val found = mutableListOf<ApkFile>()
-        val roots = mutableListOf<File>()
-        Environment.getExternalStorageDirectory()?.let { roots.add(it) }
-        File("/storage").listFiles()?.forEach { dir ->
-            if (dir.isDirectory && dir.name != "self" && dir.name != "emulated") roots.add(dir)
+        val found = linkedMapOf<String, ApkFile>()
+        queryApks(found)
+        if (found.size < LIMIT) {
+            val roots = mutableListOf<File>()
+            Environment.getExternalStorageDirectory()?.let { roots.add(it) }
+            File("/storage").listFiles()?.forEach { dir ->
+                if (dir.isDirectory && dir.name != "self" && dir.name != "emulated") roots.add(dir)
+            }
+            roots.distinctBy { it.absolutePath }.forEach { walk(it, 0, found) }
         }
-        roots.distinctBy { it.absolutePath }.forEach { walk(it, 0, found) }
-        return found
+        return found.values.toList()
+    }
+
+    private fun queryApks(out: MutableMap<String, ApkFile>) {
+        val collection = MediaStore.Files.getContentUri("external")
+        val projection =
+            arrayOf(
+                MediaStore.Files.FileColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.SIZE,
+                MediaStore.MediaColumns.DATA,
+            )
+        val cursor =
+            try {
+                context.contentResolver.query(
+                    collection,
+                    projection,
+                    "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?",
+                    arrayOf("%.apk"),
+                    "${MediaStore.MediaColumns.DATE_ADDED} DESC",
+                )
+            } catch (_: Exception) {
+                null
+            } ?: return
+        cursor.use {
+            val idColumn = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+            val nameColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+            val sizeColumn = it.getColumnIndex(MediaStore.MediaColumns.SIZE)
+            val dataColumn = it.getColumnIndex(MediaStore.MediaColumns.DATA)
+            while (it.moveToNext() && out.size < LIMIT) {
+                val id = it.getLong(idColumn)
+                val path = if (dataColumn >= 0) it.getString(dataColumn).orEmpty() else ""
+                val size = if (sizeColumn >= 0) it.getLong(sizeColumn) else 0L
+                val name = it.getString(nameColumn).orEmpty().ifBlank { path.substringAfterLast('/') }
+                val key = path.ifBlank { id.toString() }
+                out[key] =
+                    ApkFile(
+                        name = name.ifBlank { key },
+                        path = path,
+                        size = size,
+                        uri = ContentUris.withAppendedId(collection, id),
+                    )
+            }
+        }
     }
 
     private fun query(collection: Uri): List<MediaItem> {
@@ -85,7 +139,7 @@ class LocalMedia(private val context: Context) {
     private fun walk(
         dir: File,
         depth: Int,
-        out: MutableList<ApkFile>,
+        out: MutableMap<String, ApkFile>,
     ) {
         if (depth > MAX_DEPTH || out.size >= LIMIT) return
         val children = dir.listFiles() ?: return
@@ -93,7 +147,9 @@ class LocalMedia(private val context: Context) {
             if (out.size >= LIMIT) return
             if (child.name == "Android") continue
             if (child.isFile && child.name.endsWith(".apk", ignoreCase = true)) {
-                out.add(ApkFile(child.name, child.absolutePath, child.length()))
+                out.getOrPut(child.absolutePath) {
+                    ApkFile(child.name, child.absolutePath, child.length())
+                }
             } else if (child.isDirectory) {
                 walk(child, depth + 1, out)
             }

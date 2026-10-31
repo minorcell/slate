@@ -13,11 +13,12 @@
         android:orientation="vertical">
 
         <LinearLayout
+            android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:paddingStart="@dimen/edge"
-            android:paddingTop="43dp"
+            android:paddingTop="24dp"
             android:paddingEnd="@dimen/edge"
             android:paddingBottom="16dp">
 
@@ -28,6 +29,7 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/eyebrow"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:letterSpacing="0.22"
@@ -54,6 +56,7 @@
                 android:orientation="vertical">
 
                 <TextClock
+                    android:id="@+id/clock"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:focusable="false"
@@ -64,6 +67,7 @@
                     android:textSize="@dimen/clock_size" />
 
                 <TextClock
+                    android:id="@+id/date"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -95,7 +99,7 @@
                     android:clipChildren="false"
                     android:orientation="vertical"
                     android:paddingTop="8dp"
-                    android:paddingBottom="32dp" />
+                    android:paddingBottom="8dp" />
             </ScrollView>
 
             <TextView

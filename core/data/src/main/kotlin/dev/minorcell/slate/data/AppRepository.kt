@@ -19,13 +19,23 @@ import kotlinx.coroutines.flow.callbackFlow
 class AppRepository(private val context: Context) {
     private val packageManager: PackageManager get() = context.packageManager
 
-    fun load(): List<AppEntry> {
-        val query =
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+    /**
+     * 同时收 LEANBACK 与普通 LAUNCHER 两类入口。
+     *
+     * 电视应用一般只声明 leanback，侧载的手机应用往往只有普通 launcher；
+     * 只查 leanback 会让刚装好的侧载应用在桌面上消失。同一个包优先用 leanback 入口。
+     */
+    fun load(): List<AppEntry> =
+        (entries(Intent.CATEGORY_LEANBACK_LAUNCHER) + entries(Intent.CATEGORY_LAUNCHER))
+            .distinctBy { it.packageName }
+            .sortedBy { it.label.lowercase() }
+
+    private fun entries(category: String): List<AppEntry> {
+        val query = Intent(Intent.ACTION_MAIN).addCategory(category)
         return packageManager
             .queryIntentActivities(query, 0)
+            .asSequence()
             .filter { it.activityInfo.packageName != context.packageName }
-            .distinctBy { it.activityInfo.packageName }
             .map { resolve ->
                 val activity = resolve.activityInfo
                 AppEntry(
@@ -34,7 +44,8 @@ class AppRepository(private val context: Context) {
                     label = resolve.loadLabel(packageManager).toString(),
                 )
             }
-            .sortedBy { it.label.lowercase() }
+            .distinctBy { it.packageName }
+            .toList()
     }
 
     /**

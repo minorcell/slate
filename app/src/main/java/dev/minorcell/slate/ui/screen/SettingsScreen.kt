@@ -5,19 +5,15 @@ import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import dev.minorcell.slate.R
-import dev.minorcell.slate.data.system.MediaVolume
-import dev.minorcell.slate.data.system.ScreenBrightness
 import dev.minorcell.slate.ui.settings.SettingsPanel
 import dev.minorcell.slate.ui.shell.AppScreen
 
 class SettingsScreen(
     activity: Activity,
-    volume: MediaVolume,
-    brightness: ScreenBrightness,
     launch: (Intent) -> Unit,
 ) : AppScreen {
     private val panelView = LayoutInflater.from(activity).inflate(R.layout.settings_panel, null, false)
-    private val panel = SettingsPanel(panelView, volume, brightness, launch)
+    private val panel = SettingsPanel(panelView, launch)
 
     override val view: View = panelView
 

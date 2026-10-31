@@ -4,7 +4,7 @@
     android:layout_height="wrap_content"
     android:clipChildren="false"
     android:orientation="vertical"
-    android:paddingBottom="18dp">
+    android:paddingBottom="6dp">
 
     <TextView
         android:id="@+id/shelf_title"
@@ -19,7 +19,7 @@
         android:id="@+id/shelf_scroll"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:paddingStart="@dimen/edge"

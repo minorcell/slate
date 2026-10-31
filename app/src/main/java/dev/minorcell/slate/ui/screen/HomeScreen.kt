@@ -1,6 +1,7 @@
 package dev.minorcell.slate.ui.screen
 
 import android.app.Activity
+import android.util.TypedValue
 import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
@@ -8,6 +9,7 @@ import android.provider.Settings
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -16,6 +18,7 @@ import android.widget.Toast
 import dev.minorcell.slate.R
 import dev.minorcell.slate.data.AppRepository
 import dev.minorcell.slate.data.Preferences
+import dev.minorcell.slate.data.system.SourceKind
 import dev.minorcell.slate.data.system.TvSource
 import dev.minorcell.slate.data.system.TvSources
 import dev.minorcell.slate.domain.AppOrdering
@@ -25,7 +28,9 @@ import dev.minorcell.slate.domain.model.AppEntry
 import dev.minorcell.slate.domain.model.Builtin
 import dev.minorcell.slate.ui.Menus
 import dev.minorcell.slate.ui.TileFactory
+import dev.minorcell.slate.ui.TileSpec
 import dev.minorcell.slate.ui.shell.AppScreen
+import dev.minorcell.slate.ui.shell.ScreenMetrics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,6 +50,7 @@ class HomeScreen(
     private val launch: (Intent) -> Unit,
     private val openBuiltin: (Builtin) -> Unit,
 ) : AppScreen {
+    private val metrics = ScreenMetrics(activity)
     private val shelves = activity.findViewById<LinearLayout>(R.id.shelves)
     private val scroller = activity.findViewById<ScrollView>(R.id.scroll)
     private val title = activity.findViewById<TextView>(R.id.title)
@@ -73,6 +79,17 @@ class HomeScreen(
 
     override fun onShow() {
         if (rows.isNotEmpty()) restore()
+    }
+
+    /**
+     * 窗口拿到焦点后再请求一次。数据是异步加载的，首次渲染时桌面还没有焦点，
+     * 不补这一下，第一次按键会被系统的默认焦点搜索吃掉。
+     */
+    fun requestInitialFocus() {
+        if (rows.isEmpty()) return
+        val shelf = shelf(shelfKey) ?: rows.first()
+        val id = focusedId ?: shelf.ids.firstOrNull() ?: return
+        focus(shelf, id)
     }
 
     override fun onHostPause() {
@@ -132,13 +149,27 @@ class HomeScreen(
         restore()
     }
 
+    /**
+     * 信号行只用系统给的数据。
+     *
+     * 电视框架没有公开的切换输入接口，TvInputInfo 只提供 createSetupIntent。
+     * TIF 里有输入就逐项列出；没有（VIDAA 就是这种）就放一个「信号源」入口，
+     * 点了提示按遥控器上的信号源键，不伪造 HDMI 磁贴。
+     */
     private fun addSources(inputs: List<TvSource>) {
-        if (inputs.isEmpty()) return
         val shelf = inflateShelf(SOURCES, R.string.shelf_sources)
+        if (inputs.isEmpty()) {
+            val id = SOURCE_PREFIX + PANEL_ID
+            shelf.ids.add(id)
+            shelf.row.addView(signalTile(id))
+            shelves.addView(shelf.block)
+            rows.add(shelf)
+            return
+        }
         inputs.forEach { source ->
             val id = SOURCE_PREFIX + source.id
             shelf.ids.add(id)
-            shelf.row.addView(sourceTile(id, source.label))
+            shelf.row.addView(sourceTile(id, source))
         }
         shelves.addView(shelf.block)
         rows.add(shelf)
@@ -151,9 +182,10 @@ class HomeScreen(
     ) {
         if (entries.isEmpty()) return
         val shelf = inflateShelf(key, title)
+        val spec = if (key == PINNED) TileSpec.Pinned else TileSpec.App
         entries.forEach { app ->
             shelf.ids.add(app.packageName)
-            shelf.row.addView(appTile(app))
+            shelf.row.addView(appTile(app, spec))
         }
         shelves.addView(shelf.block)
         rows.add(shelf)
@@ -164,14 +196,20 @@ class HomeScreen(
         title: Int,
     ): Shelf {
         val block = LayoutInflater.from(activity).inflate(R.layout.shelf, shelves, false)
-        block.findViewById<TextView>(R.id.shelf_title).setText(title)
-        return Shelf(
-            key,
-            block,
-            block.findViewById(R.id.shelf_scroll),
-            block.findViewById(R.id.shelf_row),
-            mutableListOf(),
-        )
+        block.findViewById<TextView>(R.id.shelf_title).apply {
+            setText(title)
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, metrics.h(SHELF_TITLE_RATIO).toFloat())
+        }
+        block.setPadding(0, 0, 0, metrics.h(SHELF_BOTTOM_RATIO))
+        val scroll = block.findViewById<HorizontalScrollView>(R.id.shelf_scroll)
+        (scroll.layoutParams as ViewGroup.MarginLayoutParams).topMargin = metrics.h(SHELF_GAP_RATIO)
+        val row = block.findViewById<LinearLayout>(R.id.shelf_row)
+        // 焦点会放大卡片，行和父容器都不能裁掉超出边界的描边。
+        row.clipChildren = false
+        row.clipToPadding = false
+        // 两端留白：首尾卡片放大后不会顶出屏幕，最后一项也能完整滚进来。
+        row.setPadding(metrics.w(ROW_START_RATIO), 0, metrics.w(ROW_END_RATIO), 0)
+        return Shelf(key, block, scroll, row, mutableListOf())
     }
 
     private fun pinnedEntries(): List<AppEntry> = prefs.pinned.mapNotNull { apps[it] }
@@ -181,7 +219,7 @@ class HomeScreen(
             entry(Builtin.Settings, R.string.settings),
             entry(Builtin.Gallery, R.string.gallery),
             entry(Builtin.Player, R.string.player),
-            entry(Builtin.Store, R.string.store),
+            entry(Builtin.Files, R.string.files),
         )
 
     private fun entry(
@@ -189,12 +227,32 @@ class HomeScreen(
         label: Int,
     ): AppEntry = AppEntry(builtin.id, "", activity.getString(label), builtin)
 
-    private fun appTile(app: AppEntry): View = tiles.create(app).apply { bind(this, app.packageName, app.label, app) }
+    private fun appTile(
+        app: AppEntry,
+        spec: TileSpec,
+    ): View = tiles.create(app, spec).apply { bind(this, app.packageName, app.label, app) }
+
+    private fun signalTile(id: String): View {
+        val label = activity.getString(R.string.source_signal)
+        return tiles.plain(label, R.drawable.ic_source_tv, TileSpec.Source).apply {
+            bind(this, id, label, null)
+        }
+    }
 
     private fun sourceTile(
         id: String,
-        label: String,
-    ): View = tiles.plain(label, SOURCE_COLOR).apply { bind(this, id, label, null) }
+        source: TvSource,
+    ): View =
+        tiles.plain(source.label, sourceIcon(source.kind), TileSpec.Source).apply {
+            bind(this, id, source.label, null)
+        }
+
+    private fun sourceIcon(kind: SourceKind): Int =
+        when (kind) {
+            SourceKind.HDMI -> R.drawable.ic_source_hdmi
+            SourceKind.AV -> R.drawable.ic_source_av
+            SourceKind.TUNER, SourceKind.OTHER -> R.drawable.ic_source_tv
+        }
 
     private fun bind(
         view: View,
@@ -223,7 +281,12 @@ class HomeScreen(
 
     private fun activate(id: String) {
         if (id.startsWith(SOURCE_PREFIX)) {
-            Toast.makeText(activity, R.string.source_stays, Toast.LENGTH_SHORT).show()
+            val inputId = id.removePrefix(SOURCE_PREFIX)
+            if (inputId == PANEL_ID) {
+                Toast.makeText(activity, R.string.source_hint, Toast.LENGTH_LONG).show()
+            } else {
+                sources.setupIntent(inputId)?.let(launch)
+            }
             return
         }
         val app = apps[id] ?: return
@@ -408,14 +471,17 @@ class HomeScreen(
         view: View,
     ) {
         shelf.scroll.post {
+            // 可视区要去掉 ScrollView 自己的左右 padding，
+            // 否则会少滚一个 padding 的距离，最后一张卡被顶到屏幕外。
+            val viewport = shelf.scroll.width - shelf.scroll.paddingLeft - shelf.scroll.paddingRight
             val left = view.left
             val right = view.right
             val x = shelf.scroll.scrollX
-            val width = shelf.scroll.width
+            val margin = metrics.w(TILE_EDGE_RATIO)
             val target =
                 when {
-                    left < x -> left
-                    right > x + width -> right - width
+                    left - margin < x -> left - margin
+                    right + margin > x + viewport -> right + margin - viewport
                     else -> return@post
                 }
             shelf.scroll.smoothScrollTo(target.coerceAtLeast(0), 0)
@@ -457,9 +523,15 @@ class HomeScreen(
         const val PINNED = "pinned"
         const val APPS = "apps"
         const val SOURCE_PREFIX = "tv:"
+        const val PANEL_ID = "panel"
         const val FOCUS_SCALE = 1.085f
         const val ANIMATION_MS = 120L
-        val SOURCE_COLOR = 0xFF101418.toInt()
+        const val SHELF_TITLE_RATIO = 0.020f
+        const val SHELF_GAP_RATIO = 0.006f
+        const val SHELF_BOTTOM_RATIO = 0.007f
+        const val ROW_END_RATIO = 0.06f
+        const val ROW_START_RATIO = 0.012f
+        const val TILE_EDGE_RATIO = 0.02f
         val LATERAL = setOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)
         val VERTICAL = setOf(KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN)
         val OK_KEYS = setOf(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER)

@@ -2,6 +2,7 @@ package dev.minorcell.slate.data
 
 import android.content.Context
 import dev.minorcell.slate.domain.home.PinnedApps
+import dev.minorcell.slate.domain.model.Builtin
 
 /**
  * 桌面需要持久化的用户状态。
@@ -18,21 +19,19 @@ class SharedPreferencesStore(context: Context) : Preferences {
     private val store = context.getSharedPreferences("slate", Context.MODE_PRIVATE)
 
     override var order: List<String>
-        get() = store.getString(KEY_ORDER, "").orEmpty().split(SEPARATOR).filter { it.isNotEmpty() }
+        get() = ids(KEY_ORDER)
         set(value) = store.edit().putString(KEY_ORDER, value.joinToString(SEPARATOR)).apply()
 
     override var pinned: List<String>
-        get() =
-            if (!store.contains(KEY_PINNED)) {
-                PinnedApps.defaultIds
-            } else {
-                store.getString(KEY_PINNED, "").orEmpty().split(SEPARATOR).filter { it.isNotEmpty() }
-            }
+        get() = if (!store.contains(KEY_PINNED)) PinnedApps.defaultIds else ids(KEY_PINNED)
         set(value) = store.edit().putString(KEY_PINNED, value.joinToString(SEPARATOR)).apply()
 
     override var lastFocused: String?
-        get() = store.getString(KEY_LAST_FOCUSED, null)
+        get() = store.getString(KEY_LAST_FOCUSED, null)?.let(Builtin::normalizeId)
         set(value) = store.edit().putString(KEY_LAST_FOCUSED, value).apply()
+
+    private fun ids(key: String): List<String> =
+        store.getString(key, "").orEmpty().split(SEPARATOR).filter { it.isNotEmpty() }.map(Builtin::normalizeId)
 
     private companion object {
         const val KEY_ORDER = "order"

@@ -1,6 +1,6 @@
 # 开发
 
-构建、在模拟器或电视上运行、以及提交前的检查。产品说明见 [README](../README.md)，协作约定见 [CONTRIBUTING](../CONTRIBUTING.md)。
+构建、在模拟器或电视上运行、以及提交前的检查。产品说明见 [README](../README.md)，界面规范见 [ui.md](ui.md)，协作约定见 [CONTRIBUTING](../CONTRIBUTING.md)。
 
 ## 环境
 

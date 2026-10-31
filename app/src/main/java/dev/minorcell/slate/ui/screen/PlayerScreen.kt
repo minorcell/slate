@@ -100,10 +100,14 @@ class PlayerScreen(
     }
 
     private fun askOrLoad() {
-        if (StorageAccess.granted(activity, StorageAccess.Kind.Videos)) {
-            load()
-        } else {
-            StorageAccess.request(activity, StorageAccess.Kind.Videos)
+        val kind = StorageAccess.Kind.Videos
+        when {
+            StorageAccess.granted(activity, kind) -> load()
+            !asked || StorageAccess.canAsk(activity, kind) -> {
+                asked = true
+                StorageAccess.request(activity, kind)
+            }
+            else -> StorageAccess.openSettings(activity)
         }
     }
 
@@ -125,7 +129,7 @@ class PlayerScreen(
     }
 
     private fun tile(item: MediaItem): View =
-        tiles.plain(item.name, COLOR).apply {
+        tiles.plain(item.name, R.drawable.ic_builtin_player).apply {
             FocusScale.bind(this)
             setOnClickListener { play(item) }
         }
@@ -154,7 +158,8 @@ class PlayerScreen(
     }
 
     private fun showDenied() {
-        showMessage(R.string.allow_files)
+        val permanent = !StorageAccess.canAsk(activity, StorageAccess.Kind.Videos)
+        showMessage(if (permanent) R.string.allow_files_settings else R.string.allow_files)
     }
 
     private fun showMessage(text: Int) {
@@ -168,7 +173,6 @@ class PlayerScreen(
 
     private companion object {
         const val SEEK_MS = 10_000
-        val COLOR = 0xFF141A16.toInt()
         val DIRECTION_KEYS =
             setOf(
                 KeyEvent.KEYCODE_DPAD_LEFT,

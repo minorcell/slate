@@ -42,22 +42,20 @@ object SettingRanges {
     }
 }
 
+/**
+ * 音量与亮度不放在这里：音量走遥控器音量键（AudioManager），
+ * 亮度属于电视背光，Android 的 SCREEN_BRIGHTNESS 在多数电视上无效，
+ * 直接指向电视自己的图像设置。
+ */
 object SettingCatalog {
-    const val VOLUME = "volume"
-    const val BRIGHTNESS = "brightness"
     const val PICTURE = "picture"
     const val SOUND_MODE = "sound_mode"
     const val NETWORK = "network"
     const val ANDROID = "android"
     const val DEVELOPER = "developer"
 
-    fun rows(
-        volume: SettingRow.Range,
-        brightness: SettingRow.Range,
-    ): List<SettingRow> =
+    fun rows(): List<SettingRow> =
         listOf(
-            volume,
-            brightness,
             SettingRow.Handoff(PICTURE, HandoffTarget.Picture),
             SettingRow.Handoff(SOUND_MODE, HandoffTarget.SoundMode),
             SettingRow.Handoff(NETWORK, HandoffTarget.Network),

@@ -12,13 +12,10 @@ class SettingRangesTest {
     }
 
     @Test
-    fun `catalog keeps direct controls ahead of handoffs`() {
-        val volume = SettingRow.Range(SettingCatalog.VOLUME, 5, 0, 15, 1, true)
-        val brightness = SettingRow.Range(SettingCatalog.BRIGHTNESS, 102, 0, 255, 15, true)
-        val rows = SettingCatalog.rows(volume, brightness)
-        assertEquals(SettingCatalog.VOLUME, rows[0].id)
-        assertEquals(SettingCatalog.BRIGHTNESS, rows[1].id)
-        assertEquals(HandoffTarget.Picture, (rows[2] as SettingRow.Handoff).target)
+    fun `catalog lists system pages in a stable order`() {
+        val rows = SettingCatalog.rows()
+        assertEquals(HandoffTarget.Picture, (rows.first() as SettingRow.Handoff).target)
         assertEquals(HandoffTarget.DeveloperOptions, (rows.last() as SettingRow.Handoff).target)
+        assertEquals(5, rows.size)
     }
 }

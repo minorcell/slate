@@ -8,5 +8,6 @@
     <color name="text_eyebrow">#52FFFFFF</color>
     <color name="focus_stroke">#EBFFFFFF</color>
     <color name="move_stroke">#FFB74D</color>
+    <color name="icon_stroke">#FFE8E4DD</color>
     <color name="accent">#FFFFFFFF</color>
 </resources>

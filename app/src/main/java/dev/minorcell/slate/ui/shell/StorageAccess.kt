@@ -2,8 +2,11 @@ package dev.minorcell.slate.ui.shell
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 
 internal object StorageAccess {
     const val REQUEST_CODE = 41
@@ -44,6 +47,24 @@ internal object StorageAccess {
         activity.requestPermissions(
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
             REQUEST_CODE,
+        )
+    }
+
+    /** 还能弹系统授权框；返回 false 说明已被永久拒绝，只能去应用设置里打开。 */
+    fun canAsk(
+        activity: Activity,
+        kind: Kind,
+    ): Boolean = Build.VERSION.SDK_INT >= 23 && activity.shouldShowRequestPermissionRationale(permission(kind))
+
+    fun canAskFiles(activity: Activity): Boolean =
+        Build.VERSION.SDK_INT in 23..32 &&
+            activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE)
+
+    fun openSettings(activity: Activity) {
+        activity.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.fromParts("package", activity.packageName, null))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }
 }

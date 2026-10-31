@@ -4,10 +4,15 @@ enum class Builtin(val id: String) {
     Settings("builtin.settings"),
     Gallery("builtin.gallery"),
     Player("builtin.player"),
-    Store("builtin.store"),
+    Files("builtin.files"),
     ;
 
     companion object {
-        fun fromId(id: String): Builtin? = entries.find { it.id == id }
+        /** 旧版本把文件管理器叫“应用商店”，读取已保存的顺序与常用时把旧 id 迁移过来。 */
+        fun normalizeId(id: String): String = if (id == LEGACY_STORE_ID) Files.id else id
+
+        fun fromId(id: String): Builtin? = entries.find { it.id == normalizeId(id) }
+
+        private const val LEGACY_STORE_ID = "builtin.store"
     }
 }
