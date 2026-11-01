@@ -2,7 +2,7 @@
 
 <h1>Slate</h1>
 
-<p>给旧电视用的 Android 桌面。</p>
+<p>给电视用的 Android 桌面。</p>
 
 <p>
   <a href="https://github.com/minorcell/slate/actions/workflows/ci.yml">
@@ -14,7 +14,7 @@
   <a href="https://developer.android.com/tv">
     <img alt="Android TV" src="https://img.shields.io/badge/Android-TV-3DDC84?logo=android&logoColor=white">
   </a>
-  <a href="https://github.com/minorcell/slate/releases/download/v0.1.0/slate-0.1.0.apk">
+  <a href="https://github.com/minorcell/slate/releases/download/v0.1.1/slate-0.1.1.apk">
     <img alt="下载" src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-APK-1A304C">
   </a>
   <a href="https://github.com/minorcell/slate/releases/latest">

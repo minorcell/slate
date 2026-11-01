@@ -52,7 +52,7 @@ keyAlias=slate
 keyPassword=
 ```
 
-`versionName` 为 `0.1.0` 时，发布标签是 `v0.1.0`。推送这个标签后，GitHub Actions 会签名、跑测试，并创建 Release。安装包是 `slate-0.1.0.apk`。
+`versionName` 为 `0.1.1` 时，发布标签是 `v0.1.1`。推送这个标签后，GitHub Actions 会签名、跑测试，并创建 Release。安装包是 `slate-0.1.1.apk`。
 
 Actions 使用四个 secret，和本地是同一把密钥：`SLATE_KEYSTORE_BASE64`、`SLATE_STORE_PASSWORD`、`SLATE_KEY_ALIAS`、`SLATE_KEY_PASSWORD`。第一个是 keystore 文件的 base64。这份密钥要留着，以后更新必须用同一把，否则电视会拒绝覆盖安装。
 
