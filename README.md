@@ -1,20 +1,34 @@
-# Slate
+<div align="center">
+
+<h1>Slate</h1>
+
+<p>给旧电视用的 Android 桌面。</p>
+
+<p>
+  <a href="https://github.com/minorcell/slate/actions/workflows/ci.yml">
+    <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/minorcell/slate/ci.yml?branch=main&label=CI">
+  </a>
+  <a href="https://kotlinlang.org/">
+    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.1-7F52FF?logo=kotlin&logoColor=white">
+  </a>
+  <a href="https://developer.android.com/tv">
+    <img alt="Android TV" src="https://img.shields.io/badge/Android-TV-3DDC84?logo=android&logoColor=white">
+  </a>
+  <a href="https://github.com/minorcell/slate/releases/download/v0.1.0/slate-0.1.0.apk">
+    <img alt="下载" src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-APK-1A304C">
+  </a>
+  <a href="https://github.com/minorcell/slate/releases/latest">
+    <img alt="版本" src="https://img.shields.io/github/v/release/minorcell/slate?label=%E7%89%88%E6%9C%AC&color=1A304C">
+  </a>
+</p>
+
+<img src="docs/home.jpg" width="840" alt="电视上的 Slate：左上是时间，底部是一行应用">
+
+</div>
 
 国产电视自带的桌面里，广告、通知和会员入口太多。已有的开源桌面里有不少好作品，但在系统版本旧、内存小的电视上跑不顺。
 
 Slate 是为此重写的 Android TV 桌面。时间、壁纸和一行应用，留在同一幅画面里。
-
-<p align="center">
-  <a href="https://github.com/minorcell/slate/releases/download/v0.1.0/slate-0.1.0.apk"><strong>下载 0.1.0</strong></a>
-  ·
-  约 41 KiB
-  ·
-  <a href="https://github.com/minorcell/slate/releases">全部版本</a>
-</p>
-
-<p align="center">
-  <img src="docs/home.jpg" width="840" alt="电视上的 Slate：左上是时间，底部是一行应用">
-</p>
 
 ## 桌面
 
