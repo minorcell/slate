@@ -14,11 +14,8 @@
   <a href="https://developer.android.com/tv">
     <img alt="Android TV" src="https://img.shields.io/badge/Android-TV-3DDC84?logo=android&logoColor=white">
   </a>
-  <a href="https://github.com/minorcell/slate/releases/download/v0.1.1/slate-0.1.1.apk">
-    <img alt="下载" src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-APK-1A304C">
-  </a>
   <a href="https://github.com/minorcell/slate/releases/latest">
-    <img alt="版本" src="https://img.shields.io/github/v/release/minorcell/slate?label=%E7%89%88%E6%9C%AC&color=1A304C">
+    <img alt="下载" src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-APK-1A304C">
   </a>
 </p>
 
