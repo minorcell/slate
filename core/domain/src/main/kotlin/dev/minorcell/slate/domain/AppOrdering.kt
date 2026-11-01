@@ -32,12 +32,17 @@ object AppOrdering {
         items: List<T>,
         from: Int,
         to: Int,
-    ): List<T> {
-        if (from < 0 || to < 0 || from >= items.size || to >= items.size || from == to) return items
-        val result = ArrayList(items)
-        result.add(to, result.removeAt(from))
-        return result
-    }
+    ): List<T> =
+        when {
+            from < 0 || from >= items.size -> items
+            to < 0 || to >= items.size -> items
+            from == to -> items
+            else -> {
+                val result = ArrayList(items)
+                result.add(to, result.removeAt(from))
+                result
+            }
+        }
 
     private fun rankOf(
         rank: Map<String, Int>,

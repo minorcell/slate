@@ -34,9 +34,9 @@ object Backdrop {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         sky(canvas, paint, width, height)
         moon(canvas, paint, width, height)
-        hill(canvas, paint, width, height, Ridge(0.62f, 0.50f, HILL_FAR_TOP, HILL_FAR_BOTTOM))
-        hill(canvas, paint, width, height, Ridge(0.74f, 0.62f, HILL_MID_TOP, HILL_MID_BOTTOM))
-        hill(canvas, paint, width, height, Ridge(0.86f, 0.76f, HILL_NEAR_TOP, HILL_NEAR_BOTTOM))
+        hill(canvas, paint, width, height, Ridge(HILL_FAR_BASE, HILL_FAR_PEAK, HILL_FAR_TOP, HILL_FAR_BOTTOM))
+        hill(canvas, paint, width, height, Ridge(HILL_MID_BASE, HILL_MID_PEAK, HILL_MID_TOP, HILL_MID_BOTTOM))
+        hill(canvas, paint, width, height, Ridge(HILL_NEAR_BASE, HILL_NEAR_PEAK, HILL_NEAR_TOP, HILL_NEAR_BOTTOM))
         shade(canvas, paint, width, height)
     }
 
@@ -170,59 +170,64 @@ object Backdrop {
         radius: Int,
     ) {
         val tmp = IntArray(pixels.size)
-        blurAxis(pixels, tmp, width, height, radius, horizontal = true)
-        blurAxis(tmp, pixels, width, height, radius, horizontal = false)
+        blurAxis(BlurPass(pixels, tmp, width, height, radius, horizontal = true))
+        blurAxis(BlurPass(tmp, pixels, width, height, radius, horizontal = false))
     }
 
-    private fun blurAxis(
-        source: IntArray,
-        dest: IntArray,
-        width: Int,
-        height: Int,
-        radius: Int,
-        horizontal: Boolean,
-    ) {
-        val lines = if (horizontal) height else width
-        val length = if (horizontal) width else height
-        val window = radius * 2 + 1
+    private fun blurAxis(pass: BlurPass) {
+        val lines = if (pass.horizontal) pass.height else pass.width
+        val length = if (pass.horizontal) pass.width else pass.height
+        val window = pass.radius * 2 + 1
         var line = 0
         while (line < lines) {
             var index = 0
             while (index < length) {
-                var alpha = 0
-                var red = 0
-                var green = 0
-                var blue = 0
-                var offset = -radius
-                while (offset <= radius) {
-                    val sample = clamp(index + offset, 0, length - 1)
-                    val color = if (horizontal) source[line * width + sample] else source[sample * width + line]
-                    alpha += color ushr ALPHA_SHIFT
-                    red += (color shr RED_SHIFT) and BYTE_MASK
-                    green += (color shr GREEN_SHIFT) and BYTE_MASK
-                    blue += color and BYTE_MASK
-                    offset++
-                }
-                val at = if (horizontal) line * width + index else index * width + line
-                dest[at] =
-                    ((alpha / window) shl ALPHA_SHIFT) or
-                    ((red / window) shl RED_SHIFT) or
-                    ((green / window) shl GREEN_SHIFT) or
-                    (blue / window)
+                pass.dest[pixelAt(pass, line, index)] = average(pass, line, index, length, window)
                 index++
             }
             line++
         }
     }
 
+    private fun average(
+        pass: BlurPass,
+        line: Int,
+        index: Int,
+        length: Int,
+        window: Int,
+    ): Int {
+        var alpha = 0
+        var red = 0
+        var green = 0
+        var blue = 0
+        var offset = -pass.radius
+        while (offset <= pass.radius) {
+            val color = pass.sample(line, clamp(index + offset, 0, length - 1))
+            alpha += color ushr ALPHA_SHIFT
+            red += (color shr RED_SHIFT) and BYTE_MASK
+            green += (color shr GREEN_SHIFT) and BYTE_MASK
+            blue += color and BYTE_MASK
+            offset++
+        }
+        return ((alpha / window) shl ALPHA_SHIFT) or
+            ((red / window) shl RED_SHIFT) or
+            ((green / window) shl GREEN_SHIFT) or
+            (blue / window)
+    }
+
+    private fun pixelAt(
+        pass: BlurPass,
+        line: Int,
+        index: Int,
+    ): Int = if (pass.horizontal) line * pass.width + index else index * pass.width + line
+
     private fun clamp(
         value: Int,
         min: Int,
         max: Int,
     ): Int {
-        if (value < min) return min
-        if (value > max) return max
-        return value
+        val bounded = if (value < min) min else value
+        return if (bounded > max) max else bounded
     }
 
     private fun atLeast(
@@ -242,6 +247,12 @@ object Backdrop {
     private const val MOON_Y = 0.20f
     private const val MOON_RADIUS = 0.28f
     private const val MOON_HALO_STOP = 0.18f
+    private const val HILL_FAR_BASE = 0.62f
+    private const val HILL_FAR_PEAK = 0.50f
+    private const val HILL_MID_BASE = 0.74f
+    private const val HILL_MID_PEAK = 0.62f
+    private const val HILL_NEAR_BASE = 0.86f
+    private const val HILL_NEAR_PEAK = 0.76f
     private const val HILL_FAR_TOP = 0xFF4A6280.toInt()
     private const val HILL_FAR_BOTTOM = 0xFF2C415C.toInt()
     private const val HILL_MID_TOP = 0xFF2E4868.toInt()
@@ -264,6 +275,20 @@ object Backdrop {
     private const val ALPHA_SHIFT = 24
     private const val RED_SHIFT = 16
     private const val GREEN_SHIFT = 8
+
+    private class BlurPass(
+        val source: IntArray,
+        val dest: IntArray,
+        val width: Int,
+        val height: Int,
+        val radius: Int,
+        val horizontal: Boolean,
+    ) {
+        fun sample(
+            line: Int,
+            index: Int,
+        ): Int = if (horizontal) source[line * width + index] else source[index * width + line]
+    }
 
     private class Ridge(
         val baseline: Float,

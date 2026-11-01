@@ -8,10 +8,12 @@ object ShelfFocus {
     ): String {
         if (ids.isEmpty()) return current
         val index = ids.indexOf(current)
-        if (index < 0) return ids[0]
         val next = index + delta
-        if (next < 0 || next >= ids.size) return current
-        return ids[next]
+        return when {
+            index < 0 -> ids[0]
+            next < 0 || next >= ids.size -> current
+            else -> ids[next]
+        }
     }
 
     fun adjacent(

@@ -6,11 +6,11 @@ package dev.minorcell.slate.wallpaper
  */
 internal class DitherNoise(seed: Int) {
     private var x = seed
-    private var y = seed shr 31
+    private var y = seed shr HIGH_HALF
     private var z = 0
     private var w = 0
     private var v = seed.inv()
-    private var addend = (seed shl 10) xor (y ushr 4)
+    private var addend = (seed shl SEED_SHIFT) xor (y ushr SEED_USHR)
 
     init {
         var step = 0
@@ -37,7 +37,7 @@ internal class DitherNoise(seed: Int) {
     }
 
     private fun bounded(span: Int): Int {
-        if (span and -span == span) return nextBits(31 - Integer.numberOfLeadingZeros(span))
+        if (span and -span == span) return nextBits(HIGH_HALF - Integer.numberOfLeadingZeros(span))
         var bits: Int
         var value: Int
         do {
@@ -47,17 +47,17 @@ internal class DitherNoise(seed: Int) {
         return value
     }
 
-    private fun nextBits(bitCount: Int): Int = (nextRaw() ushr (32 - bitCount)) and (-bitCount shr 31)
+    private fun nextBits(bitCount: Int): Int = (nextRaw() ushr (WORD_BITS - bitCount)) and (-bitCount shr HIGH_HALF)
 
     private fun nextRaw(): Int {
         var t = x
-        t = t xor (t ushr 2)
+        t = t xor (t ushr XOR_SHIFT)
         x = y
         y = z
         z = w
         val previous = v
         w = previous
-        t = t xor (t shl 1) xor previous xor (previous shl 4)
+        t = t xor (t shl XOR_TWIST) xor previous xor (previous shl V_SHIFT)
         v = t
         addend += ADDEND_STEP
         return t + addend
@@ -66,5 +66,12 @@ internal class DitherNoise(seed: Int) {
     private companion object {
         const val WARMUP = 64
         const val ADDEND_STEP = 362437
+        const val HIGH_HALF = 31
+        const val WORD_BITS = 32
+        const val SEED_SHIFT = 10
+        const val SEED_USHR = 4
+        const val XOR_SHIFT = 2
+        const val XOR_TWIST = 1
+        const val V_SHIFT = 4
     }
 }

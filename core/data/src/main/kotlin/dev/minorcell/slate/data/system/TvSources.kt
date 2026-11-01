@@ -30,11 +30,12 @@ class TvSources(private val context: Context) {
      * TvInputInfo 只提供 setup 入口（API 26+），框架没有公开的切换输入接口。
      * 有就打开系统自己那一页，没有就什么也不做，不弹假提示。
      */
-    fun setupIntent(inputId: String): Intent? {
-        if (Build.VERSION.SDK_INT < 26) return null
-        val info = manager?.getTvInputInfo(inputId) ?: return null
-        return info.createSetupIntent()?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
+    fun setupIntent(inputId: String): Intent? =
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            null
+        } else {
+            manager?.getTvInputInfo(inputId)?.createSetupIntent()?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
 
     private fun kindOf(type: Int): SourceKind =
         when (type) {

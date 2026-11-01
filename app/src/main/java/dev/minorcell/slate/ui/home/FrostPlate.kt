@@ -37,6 +37,7 @@ class FrostPlate(
     private var spaceWidth = 1
     private var spaceHeight = 1
 
+    @Suppress("LongParameterList")
     fun place(
         left: Int,
         top: Int,

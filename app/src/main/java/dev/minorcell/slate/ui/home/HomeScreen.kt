@@ -28,7 +28,9 @@ import java.util.concurrent.Executor
 /**
  * 一行应用。左右在行内移动，不循环。
  * 焦点上的应用把名称写在时钟下面。设置按钮打开系统设置，不进入本应用的页面。
+ * 方法集中在这一处：再拆类会多占安装包。
  */
+@Suppress("TooManyFunctions")
 class HomeScreen(
     private val activity: Activity,
     private val repository: AppRepository,
@@ -76,10 +78,9 @@ class HomeScreen(
      * 不补这一下，第一次按键会被系统的默认焦点搜索吃掉。
      */
     fun requestInitialFocus() {
-        if (rows.isEmpty()) return
         val shelf = shelf(shelfKey) ?: firstShelf() ?: return
-        val id = focusedId ?: if (shelf.ids.isEmpty()) return else shelf.ids[0]
-        focus(shelf, id)
+        val id = focusedId ?: if (shelf.ids.isEmpty()) null else shelf.ids[0]
+        if (id != null) focus(shelf, id)
     }
 
     override fun onHostPause() {
@@ -87,13 +88,17 @@ class HomeScreen(
         if (focused != null) prefs.lastFocused = focused
     }
 
-    override fun onDirection(event: KeyEvent): Boolean {
-        if (dialog?.isShowing == true) return false
-        val moving = movingId
-        if (moving != null) return moveKey(event)
-        if (event.action != KeyEvent.ACTION_DOWN) return false
-        if (settingsButton?.hasFocus() == true) return settingsKey(event)
-        return when (event.keyCode) {
+    override fun onDirection(event: KeyEvent): Boolean =
+        when {
+            dialog?.isShowing == true -> false
+            movingId != null -> moveKey(event)
+            event.action != KeyEvent.ACTION_DOWN -> false
+            settingsButton?.hasFocus() == true -> settingsKey(event)
+            else -> directionDown(event)
+        }
+
+    private fun directionDown(event: KeyEvent): Boolean =
+        when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 focusHorizontal(-1)
                 true
@@ -112,7 +117,6 @@ class HomeScreen(
             }
             else -> false
         }
-    }
 
     private fun settingsKey(event: KeyEvent): Boolean {
         val directional = lateral(event.keyCode) || vertical(event.keyCode)
@@ -125,14 +129,15 @@ class HomeScreen(
     }
 
     override fun onBack(): Boolean {
-        if (movingId != null) {
-            endMove()
-            return true
-        }
-        val target = firstShelf() ?: return true
-        val first = if (target.ids.isEmpty()) return true else target.ids[0]
-        if (shelfKey != target.key || focusedId != first) focus(target, first)
+        if (movingId != null) endMove() else focusFirst()
         return true
+    }
+
+    private fun focusFirst() {
+        val target = firstShelf() ?: return
+        if (target.ids.isEmpty()) return
+        val first = target.ids[0]
+        if (shelfKey != target.key || focusedId != first) focus(target, first)
     }
 
     private fun render(installed: List<AppEntry>) {
@@ -251,7 +256,7 @@ class HomeScreen(
         shelfKey: String,
         app: AppEntry,
     ) {
-        val actions = ArrayList<Menus.Action>(3)
+        val actions = ArrayList<Menus.Action>()
         actions.add(Menus.Action.MOVE)
         actions.add(Menus.Action.INFO)
         actions.add(Menus.Action.UNINSTALL)
@@ -317,7 +322,7 @@ class HomeScreen(
     }
 
     private fun moveWithin(delta: Int) {
-        val shelf = shelf(movingShelf ?: return) ?: return
+        val shelf = movingShelf?.let { shelf(it) } ?: return
         val from = shelf.ids.indexOf(movingId)
         val to = from + delta
         if (from < 0 || to < 0 || to >= shelf.ids.size) return
@@ -347,9 +352,13 @@ class HomeScreen(
         val nextKey = ShelfFocus.adjacent(keys, shelfKey, delta)
         if (nextKey == shelfKey) {
             if (delta < 0) settingsButton?.requestFocus()
-            return
+        } else {
+            val next = shelf(nextKey)
+            if (next != null) focusNearest(next)
         }
-        val next = shelf(nextKey) ?: return
+    }
+
+    private fun focusNearest(next: Shelf) {
         val current = currentView()
         val target = if (current == null) 0 else centerX(current)
         val centers = ArrayList<Int>(next.ids.size)
@@ -360,8 +369,7 @@ class HomeScreen(
             tileIndex++
         }
         val id = ShelfFocus.nearest(next.ids, centers, target)
-        if (id.isEmpty()) return
-        focus(next, id)
+        if (id.isNotEmpty()) focus(next, id)
     }
 
     private fun restore() {
@@ -439,16 +447,14 @@ class HomeScreen(
         shelf: Shelf?,
         id: String?,
     ): View? {
-        if (shelf == null || id == null) return null
-        val index = shelf.ids.indexOf(id)
-        if (index < 0) return null
-        return shelf.row.getChildAt(index)
+        val row = shelf ?: return null
+        val index = row.ids.indexOf(id)
+        return if (index < 0) null else row.row.getChildAt(index)
     }
 
     private fun shelf(key: String?): Shelf? {
-        if (key == null) return null
         var index = 0
-        while (index < rows.size) {
+        while (key != null && index < rows.size) {
             if (rows[index].key == key) return rows[index]
             index++
         }
@@ -467,10 +473,12 @@ class HomeScreen(
     private fun firstShelf(): Shelf? = if (rows.isEmpty()) null else rows[0]
 
     private fun focusedOrFirst(shelf: Shelf?): String? {
-        if (shelf == null || shelf.ids.isEmpty()) return null
         val focused = focusedId
-        if (focused != null && focused in shelf.ids) return focused
-        return shelf.ids[0]
+        return when {
+            shelf == null || shelf.ids.isEmpty() -> null
+            focused != null && focused in shelf.ids -> focused
+            else -> shelf.ids[0]
+        }
     }
 
     private fun lateral(key: Int): Boolean = key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT
