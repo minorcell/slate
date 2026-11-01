@@ -11,6 +11,13 @@ if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
 
+fun signingValue(
+    envName: String,
+    property: String,
+): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }
+        ?: keystoreProperties.getProperty(property)?.takeIf { it.isNotBlank() }
+
 android {
     namespace = "dev.minorcell.slate"
     compileSdk = 35
@@ -23,10 +30,10 @@ android {
         versionName = "0.1.0"
     }
 
-    val storePath = keystoreProperties.getProperty("storeFile")?.takeIf { it.isNotBlank() }
-    val storePassword = keystoreProperties.getProperty("storePassword")?.takeIf { it.isNotBlank() }
-    val keyAlias = keystoreProperties.getProperty("keyAlias")?.takeIf { it.isNotBlank() }
-    val keyPassword = keystoreProperties.getProperty("keyPassword")?.takeIf { it.isNotBlank() }
+    val storePath = signingValue("SLATE_STORE_FILE", "storeFile")
+    val storePassword = signingValue("SLATE_STORE_PASSWORD", "storePassword")
+    val keyAlias = signingValue("SLATE_KEY_ALIAS", "keyAlias")
+    val keyPassword = signingValue("SLATE_KEY_PASSWORD", "keyPassword")
     if (storePath != null && storePassword != null && keyAlias != null && keyPassword != null) {
         signingConfigs {
             create("release") {
