@@ -2,9 +2,19 @@
 
 国产电视自带的桌面里，广告、通知和会员入口太多。已有的开源桌面里有不少好作品，但在系统版本旧、内存小的电视上跑不顺。
 
-Slate 是为此重写的 Android TV 桌面。它要能在这类机器上运行，安装包保持很小，同时把时间、壁纸和应用留在一个干净的画面里。
+Slate 是为此重写的 Android TV 桌面。时间、壁纸和一行应用，留在同一幅画面里。
 
-![Slate 桌面](docs/home.jpg)
+<p align="center">
+  <a href="https://github.com/minorcell/slate/releases/download/v0.1.0/slate-0.1.0.apk"><strong>下载 0.1.0</strong></a>
+  ·
+  约 41 KiB
+  ·
+  <a href="https://github.com/minorcell/slate/releases">全部版本</a>
+</p>
+
+<p align="center">
+  <img src="docs/home.jpg" width="840" alt="电视上的 Slate：左上是时间，底部是一行应用">
+</p>
 
 ## 桌面
 
@@ -12,16 +22,14 @@ Slate 是为此重写的 Android TV 桌面。它要能在这类机器上运行�
 
 确定键打开应用。长按可以移动、查看信息或卸载。应用安装或卸载后，这一行会自己刷新。顺序和上次的焦点会被记住。
 
-设置、应用信息和卸载都离开 Slate，打开系统自己的页面。这里没有第二层界面。
-
-签过名的 release 包大约 41 KiB。不打包字体和大图：字用系统无衬线，背景按窗口像素现画。
+设置、应用信息和卸载都离开 Slate，打开系统自己的页面。
 
 ## 文档
 
 - [开发](docs/development.md)：构建、模拟器、安装到电视
 - [界面](docs/ui.md)：桌面结构、焦点和文案
 - [参与开发](CONTRIBUTING.md)：分支、提交信息和代码约定
-- [原型](prototype/index.html)：交互原型，不参与构建
+- [原型](prototype/index.html)：交互原型
 
 ## 许可证
 
