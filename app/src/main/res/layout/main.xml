@@ -36,7 +36,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:focusable="false"
-                    android:fontFamily="sans-serif-light"
                     android:format12Hour="HH:mm"
                     android:format24Hour="HH:mm"
                     android:textColor="@color/text_primary" />
@@ -67,7 +66,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
                     android:textColor="@color/text_primary" />
             </LinearLayout>

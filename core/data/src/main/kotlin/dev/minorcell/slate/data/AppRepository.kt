@@ -6,9 +6,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import dev.minorcell.slate.domain.model.AppEntry
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 
 /**
  * 从系统读取可在电视桌面启动的应用。
@@ -25,52 +22,60 @@ class AppRepository(private val context: Context) {
      * 电视应用一般只声明 leanback，侧载的手机应用往往只有普通 launcher；
      * 只查 leanback 会让刚装好的侧载应用在桌面上消失。同一个包优先用 leanback 入口。
      */
-    fun load(): List<AppEntry> =
-        (entries(Intent.CATEGORY_LEANBACK_LAUNCHER) + entries(Intent.CATEGORY_LAUNCHER))
-            .distinctBy { it.packageName }
-            .sortedBy { it.label.lowercase() }
+    fun load(): List<AppEntry> {
+        val seen = HashSet<String>()
+        val result = ArrayList<AppEntry>()
+        collect(Intent.CATEGORY_LEANBACK_LAUNCHER, seen, result)
+        collect(Intent.CATEGORY_LAUNCHER, seen, result)
+        return result
+    }
 
-    private fun entries(category: String): List<AppEntry> {
+    private fun collect(
+        category: String,
+        seen: MutableSet<String>,
+        result: MutableList<AppEntry>,
+    ) {
         val query = Intent(Intent.ACTION_MAIN).addCategory(category)
-        return packageManager
-            .queryIntentActivities(query, 0)
-            .asSequence()
-            .filter { it.activityInfo.packageName != context.packageName }
-            .map { resolve ->
-                val activity = resolve.activityInfo
-                AppEntry(
-                    packageName = activity.packageName,
-                    activityName = activity.name,
-                    label = resolve.loadLabel(packageManager).toString(),
+        val resolved = packageManager.queryIntentActivities(query, 0)
+        var index = 0
+        while (index < resolved.size) {
+            val resolve = resolved[index]
+            val activity = resolve.activityInfo
+            if (activity.packageName != context.packageName && seen.add(activity.packageName)) {
+                result.add(
+                    AppEntry(
+                        packageName = activity.packageName,
+                        activityName = activity.name,
+                        label = resolve.loadLabel(packageManager).toString(),
+                    ),
                 )
             }
-            .distinctBy { it.packageName }
-            .toList()
+            index++
+        }
     }
 
     /**
-     * 应用安装、卸载、更新时发出事件，用于刷新桌面。
+     * 应用安装、卸载、更新时回调。返回值用来解除注册。
      */
-    fun packageChanges(): Flow<Unit> =
-        callbackFlow {
-            val receiver =
-                object : BroadcastReceiver() {
-                    override fun onReceive(
-                        context: Context?,
-                        intent: Intent?,
-                    ) {
-                        trySend(Unit)
-                    }
+    fun watchPackages(onChange: () -> Unit): () -> Unit {
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    onChange()
                 }
-            val filter =
-                IntentFilter().apply {
-                    addAction(Intent.ACTION_PACKAGE_ADDED)
-                    addAction(Intent.ACTION_PACKAGE_REMOVED)
-                    addAction(Intent.ACTION_PACKAGE_CHANGED)
-                    addAction(Intent.ACTION_PACKAGE_REPLACED)
-                    addDataScheme("package")
-                }
-            context.registerReceiver(receiver, filter)
-            awaitClose { context.unregisterReceiver(receiver) }
-        }
+            }
+        val filter =
+            IntentFilter().apply {
+                addAction(Intent.ACTION_PACKAGE_ADDED)
+                addAction(Intent.ACTION_PACKAGE_REMOVED)
+                addAction(Intent.ACTION_PACKAGE_CHANGED)
+                addAction(Intent.ACTION_PACKAGE_REPLACED)
+                addDataScheme("package")
+            }
+        context.registerReceiver(receiver, filter)
+        return { context.unregisterReceiver(receiver) }
+    }
 }

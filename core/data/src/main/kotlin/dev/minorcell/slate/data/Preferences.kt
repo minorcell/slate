@@ -17,18 +17,44 @@ class SharedPreferencesStore(context: Context) : Preferences {
 
     override var order: List<String>
         get() = ids(KEY_ORDER)
-        set(value) = store.edit().putString(KEY_ORDER, value.joinToString(SEPARATOR)).apply()
+        set(value) {
+            store.edit().putString(KEY_ORDER, join(value)).apply()
+        }
 
     override var lastFocused: String?
         get() = store.getString(KEY_LAST_FOCUSED, null)
-        set(value) = store.edit().putString(KEY_LAST_FOCUSED, value).apply()
+        set(value) {
+            store.edit().putString(KEY_LAST_FOCUSED, value).apply()
+        }
 
-    private fun ids(key: String): List<String> =
-        store.getString(key, "").orEmpty().split(SEPARATOR).filter { it.isNotEmpty() }
+    private fun join(values: List<String>): String {
+        val out = StringBuilder()
+        var index = 0
+        while (index < values.size) {
+            if (index > 0) out.append(SEPARATOR)
+            out.append(values[index])
+            index++
+        }
+        return out.toString()
+    }
+
+    private fun ids(key: String): List<String> {
+        val raw = store.getString(key, "") ?: ""
+        val out = ArrayList<String>()
+        var start = 0
+        while (start <= raw.length) {
+            val at = raw.indexOf(SEPARATOR, start)
+            val end = if (at < 0) raw.length else at
+            if (end > start) out.add(raw.substring(start, end))
+            if (at < 0) break
+            start = at + 1
+        }
+        return out
+    }
 
     private companion object {
         const val KEY_ORDER = "order"
         const val KEY_LAST_FOCUSED = "last_focused"
-        const val SEPARATOR = "\u0000"
+        const val SEPARATOR = '\u0000'
     }
 }

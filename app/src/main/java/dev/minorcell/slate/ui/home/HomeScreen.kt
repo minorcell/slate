@@ -23,10 +23,7 @@ import dev.minorcell.slate.domain.model.AppEntry
 import dev.minorcell.slate.ui.shell.AppScreen
 import dev.minorcell.slate.ui.shell.ScreenMetrics
 import dev.minorcell.slate.ui.theme.SlateType
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.concurrent.Executor
 
 /**
  * 一行应用。左右在行内移动，不循环。
@@ -37,7 +34,7 @@ class HomeScreen(
     private val repository: AppRepository,
     private val prefs: Preferences,
     private val tiles: TileFactory,
-    private val scope: CoroutineScope,
+    private val io: Executor,
     private val launch: (Intent) -> Unit,
 ) : AppScreen {
     private val metrics = ScreenMetrics(activity)
@@ -61,10 +58,12 @@ class HomeScreen(
     fun reload() {
         if (movingId != null) endMove()
         val ticket = ++loadTicket
-        scope.launch {
-            val installed = withContext(Dispatchers.IO) { repository.load() }
-            if (ticket != loadTicket) return@launch
-            render(installed)
+        io.execute {
+            val installed = repository.load()
+            view.post {
+                if (ticket != loadTicket || activity.isDestroyed) return@post
+                render(installed)
+            }
         }
     }
 
@@ -78,13 +77,14 @@ class HomeScreen(
      */
     fun requestInitialFocus() {
         if (rows.isEmpty()) return
-        val shelf = shelf(shelfKey) ?: rows.first()
-        val id = focusedId ?: shelf.ids.firstOrNull() ?: return
+        val shelf = shelf(shelfKey) ?: firstShelf() ?: return
+        val id = focusedId ?: if (shelf.ids.isEmpty()) return else shelf.ids[0]
         focus(shelf, id)
     }
 
     override fun onHostPause() {
-        focusedId?.let { prefs.lastFocused = it }
+        val focused = focusedId
+        if (focused != null) prefs.lastFocused = focused
     }
 
     override fun onDirection(event: KeyEvent): Boolean {
@@ -115,10 +115,10 @@ class HomeScreen(
     }
 
     private fun settingsKey(event: KeyEvent): Boolean {
-        val directional = event.keyCode in LATERAL || event.keyCode in VERTICAL
+        val directional = lateral(event.keyCode) || vertical(event.keyCode)
         if (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-            val shelf = shelf(shelfKey) ?: rows.firstOrNull()
-            val id = shelf?.ids?.let { focusedId?.takeIf { key -> key in it } ?: it.firstOrNull() }
+            val shelf = shelf(shelfKey) ?: firstShelf()
+            val id = focusedOrFirst(shelf)
             if (shelf != null && id != null) focus(shelf, id)
         }
         return directional
@@ -129,8 +129,8 @@ class HomeScreen(
             endMove()
             return true
         }
-        val target = rows.firstOrNull() ?: return true
-        val first = target.ids.firstOrNull() ?: return true
+        val target = firstShelf() ?: return true
+        val first = if (target.ids.isEmpty()) return true else target.ids[0]
         if (shelfKey != target.key || focusedId != first) focus(target, first)
         return true
     }
@@ -138,7 +138,12 @@ class HomeScreen(
     private fun render(installed: List<AppEntry>) {
         val ordered = AppOrdering.sort(installed, prefs.order)
         apps.clear()
-        ordered.forEach { apps[it.packageName] = it }
+        var index = 0
+        while (index < ordered.size) {
+            val app = ordered[index]
+            apps[app.packageName] = app
+            index++
+        }
         rows.clear()
         shelves.removeAllViews()
         addApps(APPS, R.string.shelf_apps, ordered)
@@ -154,9 +159,12 @@ class HomeScreen(
     ) {
         if (entries.isEmpty()) return
         val shelf = inflateShelf(key, title)
-        entries.forEach { app ->
+        var index = 0
+        while (index < entries.size) {
+            val app = entries[index]
             shelf.ids.add(app.packageName)
             shelf.row.addView(appTile(app))
+            index++
         }
         shelves.addView(shelf.block)
         rows.add(shelf)
@@ -169,7 +177,7 @@ class HomeScreen(
         val block = LayoutInflater.from(activity).inflate(R.layout.shelf, shelves, false)
         block.findViewById<TextView>(R.id.shelf_title).apply {
             setText(title)
-            typeface = SlateType.shelf(activity)
+            typeface = SlateType.shelf()
             setTextSize(TypedValue.COMPLEX_UNIT_PX, metrics.h(SHELF_TITLE_RATIO).toFloat())
         }
         block.setPadding(
@@ -221,7 +229,12 @@ class HomeScreen(
         kicker.visibility = if (moving) View.VISIBLE else View.GONE
         if (moving) kicker.setText(R.string.move_hint)
         title.text = app.label
-        rows.forEach { row -> row.block.alpha = if (row.key == shelfKey) 1f else INACTIVE_SHELF }
+        var index = 0
+        while (index < rows.size) {
+            val row = rows[index]
+            row.block.alpha = if (row.key == shelfKey) 1f else INACTIVE_SHELF
+            index++
+        }
     }
 
     private fun clearHero() {
@@ -238,7 +251,10 @@ class HomeScreen(
         shelfKey: String,
         app: AppEntry,
     ) {
-        val actions = listOf(Menus.Action.MOVE, Menus.Action.INFO, Menus.Action.UNINSTALL)
+        val actions = ArrayList<Menus.Action>(3)
+        actions.add(Menus.Action.MOVE)
+        actions.add(Menus.Action.INFO)
+        actions.add(Menus.Action.UNINSTALL)
         dialog =
             Menus.showActions(activity, app.label, actions) { action ->
                 when (action) {
@@ -285,18 +301,18 @@ class HomeScreen(
         movingId = null
         child(shelf(key), id)?.isSelected = false
         val shelf = shelf(key)
-        if (shelf != null) prefs.order = shelf.ids.toList()
+        if (shelf != null) prefs.order = ArrayList(shelf.ids)
         present(id)
     }
 
     private fun moveKey(event: KeyEvent): Boolean {
         val key = event.keyCode
-        val handled = key in LATERAL || key in VERTICAL || key in OK_KEYS
+        val handled = lateral(key) || vertical(key) || okKey(key)
         if (!handled) return false
-        if (event.action == KeyEvent.ACTION_DOWN && key in LATERAL) {
+        if (event.action == KeyEvent.ACTION_DOWN && lateral(key)) {
             moveWithin(if (key == KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1)
         }
-        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && key in OK_KEYS) endMove()
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && okKey(key)) endMove()
         return true
     }
 
@@ -304,8 +320,8 @@ class HomeScreen(
         val shelf = shelf(movingShelf ?: return) ?: return
         val from = shelf.ids.indexOf(movingId)
         val to = from + delta
-        if (from < 0 || to !in shelf.ids.indices) return
-        val next = AppOrdering.move(shelf.ids.toList(), from, to)
+        if (from < 0 || to < 0 || to >= shelf.ids.size) return
+        val next = AppOrdering.move(ArrayList(shelf.ids), from, to)
         shelf.ids.clear()
         shelf.ids.addAll(next)
         val child = shelf.row.getChildAt(from)
@@ -315,21 +331,34 @@ class HomeScreen(
     }
 
     private fun focusHorizontal(delta: Int) {
-        val shelf = shelf(shelfKey) ?: rows.firstOrNull() ?: return
-        val current = focusedId ?: shelf.ids.firstOrNull() ?: return
+        val shelf = shelf(shelfKey) ?: firstShelf() ?: return
+        val current = focusedId ?: if (shelf.ids.isEmpty()) return else shelf.ids[0]
         focus(shelf, ShelfFocus.horizontal(shelf.ids, current, delta))
     }
 
     private fun focusVertical(delta: Int) {
         if (rows.isEmpty()) return
-        val nextKey = ShelfFocus.adjacent(rows.map { it.key }, shelfKey, delta)
+        val keys = ArrayList<String>(rows.size)
+        var index = 0
+        while (index < rows.size) {
+            keys.add(rows[index].key)
+            index++
+        }
+        val nextKey = ShelfFocus.adjacent(keys, shelfKey, delta)
         if (nextKey == shelfKey) {
             if (delta < 0) settingsButton?.requestFocus()
             return
         }
         val next = shelf(nextKey) ?: return
-        val target = currentView()?.let { centerX(it) } ?: 0
-        val centers = next.ids.map { id -> child(next, id)?.let { centerX(it) } ?: 0 }
+        val current = currentView()
+        val target = if (current == null) 0 else centerX(current)
+        val centers = ArrayList<Int>(next.ids.size)
+        var tileIndex = 0
+        while (tileIndex < next.ids.size) {
+            val tile = child(next, next.ids[tileIndex])
+            centers.add(if (tile == null) 0 else centerX(tile))
+            tileIndex++
+        }
         val id = ShelfFocus.nearest(next.ids, centers, target)
         if (id.isEmpty()) return
         focus(next, id)
@@ -337,9 +366,18 @@ class HomeScreen(
 
     private fun restore() {
         val remembered = focusedId ?: prefs.lastFocused
-        val match = rows.firstOrNull { remembered != null && remembered in it.ids }
-        val shelf = match ?: rows.firstOrNull() ?: return
-        val id = if (match != null && remembered != null) remembered else shelf.ids.first()
+        var match: Shelf? = null
+        var index = 0
+        while (index < rows.size) {
+            val row = rows[index]
+            if (remembered != null && remembered in row.ids) {
+                match = row
+                break
+            }
+            index++
+        }
+        val shelf = match ?: firstShelf() ?: return
+        val id = if (match != null && remembered != null) remembered else shelf.ids[0]
         focus(shelf, id)
     }
 
@@ -365,7 +403,10 @@ class HomeScreen(
             val height = scroller.height
             when {
                 top < y -> scroller.smoothScrollTo(0, top)
-                bottom > y + height -> scroller.smoothScrollTo(0, (bottom - height).coerceAtLeast(0))
+                bottom > y + height -> {
+                    val next = bottom - height
+                    scroller.smoothScrollTo(0, if (next < 0) 0 else next)
+                }
             }
         }
     }
@@ -388,7 +429,7 @@ class HomeScreen(
                     right + margin > x + viewport -> right + margin - viewport
                     else -> return@post
                 }
-            shelf.scroll.smoothScrollTo(target.coerceAtLeast(0), 0)
+            shelf.scroll.smoothScrollTo(if (target < 0) 0 else target, 0)
         }
     }
 
@@ -404,9 +445,39 @@ class HomeScreen(
         return shelf.row.getChildAt(index)
     }
 
-    private fun shelf(key: String?): Shelf? = rows.firstOrNull { it.key == key }
+    private fun shelf(key: String?): Shelf? {
+        if (key == null) return null
+        var index = 0
+        while (index < rows.size) {
+            if (rows[index].key == key) return rows[index]
+            index++
+        }
+        return null
+    }
 
-    private fun shelfOf(view: View): Shelf? = rows.firstOrNull { it.row.indexOfChild(view) >= 0 }
+    private fun shelfOf(view: View): Shelf? {
+        var index = 0
+        while (index < rows.size) {
+            if (rows[index].row.indexOfChild(view) >= 0) return rows[index]
+            index++
+        }
+        return null
+    }
+
+    private fun firstShelf(): Shelf? = if (rows.isEmpty()) null else rows[0]
+
+    private fun focusedOrFirst(shelf: Shelf?): String? {
+        if (shelf == null || shelf.ids.isEmpty()) return null
+        val focused = focusedId
+        if (focused != null && focused in shelf.ids) return focused
+        return shelf.ids[0]
+    }
+
+    private fun lateral(key: Int): Boolean = key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT
+
+    private fun vertical(key: Int): Boolean = key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN
+
+    private fun okKey(key: Int): Boolean = key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER
 
     private fun centerX(view: View): Int {
         val xy = IntArray(2)
@@ -435,8 +506,5 @@ class HomeScreen(
         const val ROW_VERTICAL_RATIO = 0.016f
         const val TILE_EDGE_RATIO = 0.02f
         const val INACTIVE_SHELF = 0.84f
-        val LATERAL = setOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)
-        val VERTICAL = setOf(KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN)
-        val OK_KEYS = setOf(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER)
     }
 }

@@ -21,7 +21,7 @@ export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDR
 slate/
 ├── app/
 │   ├── ui/HomeActivity.kt     # 窗口、按键、把各块接起来
-│   ├── ui/theme/              # Inter 字重和光学尺寸
+│   ├── ui/theme/              # 系统无衬线的字重和字距
 │   ├── ui/home/               # 应用行、卡片、菜单、磨砂底板
 │   ├── ui/shell/              # 按窗口像素取尺寸
 │   └── wallpaper/             # 背景绘制，以及烤好的磨砂图
@@ -41,7 +41,18 @@ slate/
 ./gradlew assembleRelease
 ```
 
-产物：`app/build/outputs/apk/release/app-release.apk`
+未配置签名时，产物是 `app/build/outputs/apk/release/app-release-unsigned.apk`。配置了签名之后是同目录的 `app-release.apk`。
+
+签名不进仓库。根目录放一份 `keystore.properties`：
+
+```
+storeFile=/Users/mcell/.android/slate-release.keystore
+storePassword=
+keyAlias=slate
+keyPassword=
+```
+
+`versionName` 为 `0.1.0` 时，发布标签是 `v0.1.0`。GitHub Release 上的安装包是签过名的 `slate-0.1.0.apk`。这份密钥要留着，以后更新必须用同一把，否则电视会拒绝覆盖安装。
 
 本地调试包：
 
@@ -80,7 +91,7 @@ echo no | avdmanager create avd -n slate_tv -k "system-images;android-34;android
 
 ```bash
 adb connect <电视IP>:5555
-adb install app/build/outputs/apk/release/app-release.apk
+adb install app/build/outputs/apk/release/app-release-unsigned.apk
 adb shell cmd package set-home-activity dev.minorcell.slate/dev.minorcell.slate.ui.HomeActivity
 ```
 

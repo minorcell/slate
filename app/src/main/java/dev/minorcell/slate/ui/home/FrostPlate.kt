@@ -47,10 +47,10 @@ class FrostPlate(
     ) {
         frameLeft = left
         frameTop = top
-        frameWidth = width.coerceAtLeast(1)
-        frameHeight = height.coerceAtLeast(1)
-        spaceWidth = spaceW.coerceAtLeast(1)
-        spaceHeight = spaceH.coerceAtLeast(1)
+        frameWidth = atLeast(width, 1)
+        frameHeight = atLeast(height, 1)
+        spaceWidth = atLeast(spaceW, 1)
+        spaceHeight = atLeast(spaceH, 1)
         invalidateSelf()
     }
 
@@ -63,8 +63,8 @@ class FrostPlate(
         source.set(
             (frameLeft * scaleX).toInt(),
             (frameTop * scaleY).toInt(),
-            ((frameLeft + frameWidth) * scaleX).toInt().coerceAtLeast(1),
-            ((frameTop + frameHeight) * scaleY).toInt().coerceAtLeast(1),
+            atLeast(((frameLeft + frameWidth) * scaleX).toInt(), 1),
+            atLeast(((frameTop + frameHeight) * scaleY).toInt(), 1),
         )
         path.reset()
         path.addRoundRect(dest, radius, radius, Path.Direction.CW)
@@ -95,6 +95,11 @@ class FrostPlate(
 
     @Deprecated("Deprecated in Java")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+
+    private fun atLeast(
+        value: Int,
+        min: Int,
+    ): Int = if (value < min) min else value
 
     companion object {
         private const val VEIL = 0x66101828

@@ -14,9 +14,8 @@ import android.provider.Settings
 object SystemSettings {
     fun intent(context: Context): Intent? {
         val chosen = television(context) ?: Intent(Settings.ACTION_SETTINGS)
-        return chosen
-            .takeIf { it.resolveActivity(context.packageManager) != null }
-            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (chosen.resolveActivity(context.packageManager) == null) return null
+        return chosen.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     private fun television(context: Context): Intent? {
@@ -24,12 +23,9 @@ object SystemSettings {
             Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_LAUNCHER)
                 .setPackage(TV_SETTINGS)
-        val activity =
-            context.packageManager
-                .queryIntentActivities(query, 0)
-                .firstOrNull()
-                ?.activityInfo
-                ?: return null
+        val matches = context.packageManager.queryIntentActivities(query, 0)
+        if (matches.isEmpty()) return null
+        val activity = matches[0].activityInfo
         return Intent(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
             .setClassName(activity.packageName, activity.name)

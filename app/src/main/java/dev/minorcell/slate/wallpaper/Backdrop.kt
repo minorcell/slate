@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
-import kotlin.random.Random
 
 /**
  * 首页背景。按窗口像素画一张夜色山丘，再烤一张小的磨砂图给底板用。
@@ -92,14 +91,12 @@ object Backdrop {
     ) {
         val crest = height * ridge.peak
         val foot = height * ridge.baseline
-        val path =
-            Path().apply {
-                moveTo(0f, height)
-                lineTo(0f, foot)
-                quadTo(width * HILL_CREST_X, crest, width, foot + height * HILL_RIGHT_DROP)
-                lineTo(width, height)
-                close()
-            }
+        val path = Path()
+        path.moveTo(0f, height)
+        path.lineTo(0f, foot)
+        path.quadTo(width * HILL_CREST_X, crest, width, foot + height * HILL_RIGHT_DROP)
+        path.lineTo(width, height)
+        path.close()
         paint.shader = LinearGradient(0f, crest, 0f, height, ridge.top, ridge.bottom, Shader.TileMode.CLAMP)
         canvas.drawPath(path, paint)
         paint.shader = null
@@ -128,10 +125,12 @@ object Backdrop {
     private fun dither(bitmap: Bitmap) {
         val width = bitmap.width
         val row = IntArray(width)
-        val random = Random(DITHER_SEED)
-        for (y in 0 until bitmap.height) {
+        val random = DitherNoise(DITHER_SEED)
+        var y = 0
+        while (y < bitmap.height) {
             bitmap.getPixels(row, 0, width, 0, y, width, 1)
-            for (x in row.indices) {
+            var x = 0
+            while (x < row.size) {
                 val color = row[x]
                 val noise = random.nextInt(DITHER_MIN, DITHER_MAX)
                 val red = ((color shr RED_SHIFT) and BYTE_MASK) + noise
@@ -139,21 +138,27 @@ object Backdrop {
                 val blue = (color and BYTE_MASK) + noise
                 row[x] =
                     (color and ALPHA_MASK) or
-                    (red.coerceIn(0, BYTE_MASK) shl RED_SHIFT) or
-                    (green.coerceIn(0, BYTE_MASK) shl GREEN_SHIFT) or
-                    blue.coerceIn(0, BYTE_MASK)
+                    (clamp(red, 0, BYTE_MASK) shl RED_SHIFT) or
+                    (clamp(green, 0, BYTE_MASK) shl GREEN_SHIFT) or
+                    clamp(blue, 0, BYTE_MASK)
+                x++
             }
             bitmap.setPixels(row, 0, width, 0, y, width, 1)
+            y++
         }
     }
 
     private fun frost(source: Bitmap): Bitmap {
         val width = FROST_WIDTH
         val height = FROST_WIDTH * source.height / source.width
-        val small = Bitmap.createScaledBitmap(source, width, height.coerceAtLeast(1), true)
+        val small = Bitmap.createScaledBitmap(source, width, atLeast(height, 1), true)
         val pixels = IntArray(small.width * small.height)
         small.getPixels(pixels, 0, small.width, 0, 0, small.width, small.height)
-        repeat(BLUR_PASSES) { blur(pixels, small.width, small.height, BLUR_RADIUS) }
+        var pass = 0
+        while (pass < BLUR_PASSES) {
+            blur(pixels, small.width, small.height, BLUR_RADIUS)
+            pass++
+        }
         small.setPixels(pixels, 0, small.width, 0, 0, small.width, small.height)
         return small
     }
@@ -180,19 +185,23 @@ object Backdrop {
         val lines = if (horizontal) height else width
         val length = if (horizontal) width else height
         val window = radius * 2 + 1
-        for (line in 0 until lines) {
-            for (index in 0 until length) {
+        var line = 0
+        while (line < lines) {
+            var index = 0
+            while (index < length) {
                 var alpha = 0
                 var red = 0
                 var green = 0
                 var blue = 0
-                for (offset in -radius..radius) {
-                    val sample = (index + offset).coerceIn(0, length - 1)
+                var offset = -radius
+                while (offset <= radius) {
+                    val sample = clamp(index + offset, 0, length - 1)
                     val color = if (horizontal) source[line * width + sample] else source[sample * width + line]
                     alpha += color ushr ALPHA_SHIFT
                     red += (color shr RED_SHIFT) and BYTE_MASK
                     green += (color shr GREEN_SHIFT) and BYTE_MASK
                     blue += color and BYTE_MASK
+                    offset++
                 }
                 val at = if (horizontal) line * width + index else index * width + line
                 dest[at] =
@@ -200,9 +209,26 @@ object Backdrop {
                     ((red / window) shl RED_SHIFT) or
                     ((green / window) shl GREEN_SHIFT) or
                     (blue / window)
+                index++
             }
+            line++
         }
     }
+
+    private fun clamp(
+        value: Int,
+        min: Int,
+        max: Int,
+    ): Int {
+        if (value < min) return min
+        if (value > max) return max
+        return value
+    }
+
+    private fun atLeast(
+        value: Int,
+        min: Int,
+    ): Int = if (value < min) min else value
 
     private const val SKY_TOP = 0xFF07101C.toInt()
     private const val SKY_MID = 0xFF243656.toInt()

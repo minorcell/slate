@@ -28,13 +28,8 @@ import dev.minorcell.slate.ui.home.TileFactory
 import dev.minorcell.slate.ui.shell.ScreenMetrics
 import dev.minorcell.slate.ui.theme.SlateType
 import dev.minorcell.slate.wallpaper.Backdrop
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.util.concurrent.Executors
 
 /**
  * 桌面本身。二级页面不留在这里：设置、应用信息和卸载都交给系统。
@@ -52,7 +47,11 @@ class HomeActivity : Activity() {
         super.attachBaseContext(newBase.createConfigurationContext(config))
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val io =
+        Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "slate-io").apply { isDaemon = true }
+        }
+    private var stopWatchingPackages: (() -> Unit)? = null
 
     private lateinit var home: HomeScreen
 
@@ -71,13 +70,11 @@ class HomeActivity : Activity() {
                 repository = repository,
                 prefs = prefs,
                 tiles = TileFactory(this),
-                scope = scope,
-                launch = ::launch,
+                io = io,
+                launch = { launch(it) },
             )
         findViewById<View>(R.id.settings).setOnClickListener { openSettings() }
-        scope.launch {
-            repository.packageChanges().collect { home.reload() }
-        }
+        stopWatchingPackages = repository.watchPackages { home.reload() }
         home.reload()
     }
 
@@ -85,21 +82,21 @@ class HomeActivity : Activity() {
     private fun applyChrome() {
         val metrics = ScreenMetrics(this)
         findViewById<TextView>(R.id.kicker).apply {
-            typeface = SlateType.hint(this@HomeActivity)
+            typeface = SlateType.hint()
             setTextSize(TypedValue.COMPLEX_UNIT_PX, metrics.h(KICKER_RATIO).toFloat())
         }
         findViewById<TextView>(R.id.title).apply {
-            typeface = SlateType.title(this@HomeActivity)
+            typeface = SlateType.title()
             letterSpacing = SlateType.TITLE_TRACKING
             setTextSize(TypedValue.COMPLEX_UNIT_PX, metrics.h(TITLE_RATIO).toFloat())
         }
         findViewById<TextView>(R.id.clock).apply {
-            typeface = SlateType.clock(this@HomeActivity)
+            typeface = SlateType.clock()
             letterSpacing = SlateType.CLOCK_TRACKING
             setTextSize(TypedValue.COMPLEX_UNIT_PX, metrics.h(CLOCK_RATIO).toFloat())
         }
         findViewById<TextView>(R.id.date).apply {
-            typeface = SlateType.date(this@HomeActivity)
+            typeface = SlateType.date()
             setTextSize(TypedValue.COMPLEX_UNIT_PX, metrics.h(DATE_RATIO).toFloat())
         }
         val button = metrics.h(SETTINGS_RATIO)
@@ -131,13 +128,13 @@ class HomeActivity : Activity() {
         val plate = findViewById<View>(R.id.shelf_pane)
         stage.post {
             if (stage.width == 0 || stage.height == 0) return@post
-            scope.launch {
-                val picture =
-                    withContext(Dispatchers.Default) {
-                        Backdrop.render(stage.width, stage.height)
-                    }
-                backdrop.setImageBitmap(picture.sharp)
-                FrostPlate.track(plate, backdrop, picture.frost, resources.getDimension(R.dimen.glass_radius))
+            io.execute {
+                val picture = Backdrop.render(stage.width, stage.height)
+                stage.post {
+                    if (isDestroyed) return@post
+                    backdrop.setImageBitmap(picture.sharp)
+                    FrostPlate.track(plate, backdrop, picture.frost, resources.getDimension(R.dimen.glass_radius))
+                }
             }
         }
     }
@@ -153,7 +150,8 @@ class HomeActivity : Activity() {
     }
 
     override fun onDestroy() {
-        scope.cancel()
+        stopWatchingPackages?.invoke()
+        io.shutdown()
         super.onDestroy()
     }
 

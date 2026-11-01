@@ -7,9 +7,10 @@ object ShelfFocus {
         delta: Int,
     ): String {
         if (ids.isEmpty()) return current
-        val index = ids.indexOf(current).takeIf { it >= 0 } ?: return ids.first()
+        val index = ids.indexOf(current)
+        if (index < 0) return ids[0]
         val next = index + delta
-        if (next !in ids.indices) return current
+        if (next < 0 || next >= ids.size) return current
         return ids[next]
     }
 
@@ -19,8 +20,13 @@ object ShelfFocus {
         delta: Int,
     ): String {
         if (ids.isEmpty()) return current
-        val index = ids.indexOf(current).coerceAtLeast(0)
-        return ids[(index + delta).coerceIn(0, ids.lastIndex)]
+        var index = ids.indexOf(current)
+        if (index < 0) index = 0
+        var next = index + delta
+        if (next < 0) next = 0
+        val last = ids.size - 1
+        if (next > last) next = last
+        return ids[next]
     }
 
     fun nearest(
@@ -31,13 +37,16 @@ object ShelfFocus {
         if (ids.isEmpty()) return ""
         var best = 0
         var bestDistance = Int.MAX_VALUE
-        centers.forEachIndexed { index, center ->
-            val distance = kotlin.math.abs(center - target)
+        var index = 0
+        while (index < centers.size) {
+            val distance = Math.abs(centers[index] - target)
             if (distance < bestDistance) {
                 best = index
                 bestDistance = distance
             }
+            index++
         }
-        return ids[best.coerceIn(0, ids.lastIndex)]
+        if (best > ids.size - 1) best = ids.size - 1
+        return ids[best]
     }
 }

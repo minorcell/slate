@@ -1,6 +1,7 @@
 package dev.minorcell.slate.domain
 
 import dev.minorcell.slate.domain.model.AppEntry
+import java.util.Locale
 
 /**
  * 桌面顺序规则：用户保存过的顺序优先，其余按名称排列。
@@ -10,11 +11,18 @@ object AppOrdering {
         apps: List<AppEntry>,
         savedOrder: List<String>,
     ): List<AppEntry> {
-        val rank = savedOrder.withIndex().associate { (index, pkg) -> pkg to index }
-        return apps.sortedWith(
-            compareBy<AppEntry> { rank[it.packageName] ?: Int.MAX_VALUE }
-                .thenBy { it.label.lowercase() },
-        )
+        val rank = HashMap<String, Int>()
+        var index = 0
+        while (index < savedOrder.size) {
+            rank[savedOrder[index]] = index
+            index++
+        }
+        val result = ArrayList(apps)
+        result.sortWith { left, right ->
+            val byRank = rankOf(rank, left).compareTo(rankOf(rank, right))
+            if (byRank != 0) byRank else fold(left.label).compareTo(fold(right.label))
+        }
+        return result
     }
 
     /**
@@ -25,9 +33,17 @@ object AppOrdering {
         from: Int,
         to: Int,
     ): List<T> {
-        if (from !in items.indices || to !in items.indices || from == to) return items
-        val result = items.toMutableList()
+        if (from < 0 || to < 0 || from >= items.size || to >= items.size || from == to) return items
+        val result = ArrayList(items)
         result.add(to, result.removeAt(from))
         return result
     }
+
+    private fun rankOf(
+        rank: Map<String, Int>,
+        app: AppEntry,
+    ): Int = rank[app.packageName] ?: Int.MAX_VALUE
+
+    /** 与 Kotlin `lowercase()` 一样走默认语言，中文名不受影响，英文名大小写仍排在一起。 */
+    private fun fold(label: String): String = (label as java.lang.String).toLowerCase(Locale.getDefault())
 }

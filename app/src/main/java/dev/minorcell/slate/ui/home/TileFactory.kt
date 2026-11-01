@@ -50,7 +50,8 @@ class TileFactory(private val activity: Activity) {
         val width = metrics.w(WIDTH_RATIO)
         val height = width * POSTER_HEIGHT / POSTER_WIDTH
         val gap = metrics.h(GAP_RATIO)
-        val inset = metrics.h(RING_INSET_RATIO).coerceAtLeast(1)
+        val rawInset = metrics.h(RING_INSET_RATIO)
+        val inset = if (rawInset < 1) 1 else rawInset
         view.setPadding(inset, inset, inset, inset)
         val radius = activity.resources.getDimension(R.dimen.tile_radius)
         view.findViewById<View>(R.id.surface).apply {

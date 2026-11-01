@@ -16,10 +16,16 @@ object Menus {
         actions: List<Action>,
         onAction: (Action) -> Unit,
     ): AlertDialog {
-        val labels = actions.map { activity.getString(it.label) }.toTypedArray()
+        val labels = arrayOfNulls<String>(actions.size)
+        var index = 0
+        while (index < actions.size) {
+            labels[index] = activity.getString(actions[index].label)
+            index++
+        }
+        @Suppress("UNCHECKED_CAST")
         return AlertDialog.Builder(activity, DIALOG_THEME)
             .setTitle(title)
-            .setItems(labels) { _, which -> onAction(actions[which]) }
+            .setItems(labels as Array<String>) { _, which -> onAction(actions[which]) }
             .show()
     }
 

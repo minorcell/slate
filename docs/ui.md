@@ -25,7 +25,7 @@ Slate 只做桌面。应用留在这一层；设置、应用信息、卸载都�
 
 背景由 `wallpaper/Backdrop` 画出来，不打包大图。同时烤一张 320 像素宽的磨砂图。底板（`ui/home/FrostPlate`）只取自己身后的那一块，再压暗、描一圈亮边。这块电视是 Android 9，不做每帧实时模糊。
 
-字体是 Inter 可变字体（`assets/fonts/`，OFL）。时钟用 Display 光学尺寸，行标题用 Text。Android 8.0 以下没有变体轴，退回系统无衬线。
+字用系统无衬线。时钟更重，日期和说明更轻。Android 9 以下没有可变字重，较重的字退回 `sans-serif-medium`。
 
 左上是时间，下面写当前焦点的应用名。名字不写在卡片上。右上角是设置。设置获得焦点后按确定，打开电视自己的设置，和应用列表里的「系统设置」是同一个入口：`com.android.tv.settings` 的启动页。不要用 `android.settings.mtk.SETTINGS` 或 `com.android.settings.Settings`，这台电视上那两个会打开安卓原生设置。
 
